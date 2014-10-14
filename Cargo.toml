@@ -1,0 +1,5 @@
+[package]
+
+name = "alfred"
+version = "0.0.1"
+authors = ["Kevin Ballard <kevin@sb.org>"]
