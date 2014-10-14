@@ -26,7 +26,8 @@
 //!     try!(xmlw.write_item(&item2));
 //!     try!(xmlw.write_item(&item3));
 //!
-//!     xmlw.close()
+//!     let mut stdout = try!(xmlw.close());
+//!     stdout.flush()
 //! }
 //!
 //! fn main() {
@@ -39,11 +40,12 @@
 //! }
 //! ```
 
-#![feature(if_let)]
+#![feature(if_let, unsafe_destructor)]
 #![warn(missing_doc)]
 
 use std::io;
 use std::io::BufferedWriter;
+use std::mem;
 use std::str;
 
 /// Representation of an `<item>`
@@ -109,12 +111,15 @@ pub enum ItemType {
 /// Helper struct used to manage the XML serialization of `Item`s
 ///
 /// When the `XMLWriter` is first created, the XML header is immediately
-/// written. When the `XMLWriter` is dropped, the XML footer is written.
+/// written. When the `XMLWriter` is dropped, the XML footer is written
+/// and the `Writer` is flushed.
 ///
 /// Any errors produced by writing the footer are silently ignored. The
 /// `close()` method can be used to return any such error.
 pub struct XMLWriter<'a, W: Writer + 'a> {
-    w: W,
+    // Option so close() can remove it
+    // Otherwise this must alwyas be Some()
+    w: Option<W>,
     last_err: Option<io::IoError>
 }
 
@@ -126,7 +131,7 @@ impl<'a, W: Writer + 'a> XMLWriter<'a, W> {
         match w.write_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<items>\n") {
             Ok(()) => {
                 Ok(XMLWriter {
-                    w: w,
+                    w: Some(w),
                     last_err: None
                 })
             }
@@ -144,7 +149,7 @@ impl<'a, W: Writer + 'a> XMLWriter<'a, W> {
         if let Some(ref err) = self.last_err {
             return Err(err.clone());
         }
-        let result = item.write_xml(&mut self.w, 1);
+        let result = item.write_xml(self.w.as_mut().unwrap(), 1);
         if let Err(ref err) = result {
             self.last_err = Some(err.clone());
         }
@@ -160,21 +165,49 @@ impl<'a, W: Writer + 'a> XMLWriter<'a, W> {
     /// As with `write_item()`, if a previous invocation of `write_item()`
     /// returned an error, `close()` will return the same error without
     /// attempting to write the XML footer.
-    pub fn close(mut self) -> io::IoResult<()> {
-        if let Some(err) = self.last_err {
+    ///
+    /// When this method is used, the XML footer is written, but the `Writer`
+    /// is not flushed. When the `XMLWriter` is dropped without calling
+    /// `close()`, the `Writer` is flushed after the footer is written.
+    pub fn close(mut self) -> io::IoResult<W> {
+        let last_err = self.last_err.take();
+        let mut w = self.w.take().unwrap();
+        unsafe { mem::forget(self); }
+        if let Some(err) = last_err {
             return Err(err);
         }
-        self.w.write_str("</items>\n")
+        try!(write_footer(&mut w));
+        Ok(w)
+    }
+}
+
+fn write_footer<'a, W: Writer + 'a>(w: &'a mut W) -> io::IoResult<()> {
+    w.write_str("</items>\n")
+}
+
+#[unsafe_destructor]
+impl<'a, W: Writer + 'a> Drop for XMLWriter<'a, W> {
+    fn drop(&mut self) {
+        if self.last_err.is_some() {
+            return;
+        }
+        let mut w = self.w.take().unwrap();
+        if write_footer(&mut w).is_ok() {
+            let _ = w.flush();
+        }
     }
 }
 
 /// Writes a complete XML document representing the `Item`s to the `Writer`
+///
+/// The `Writer` is flushed after the XML document is written.
 pub fn write_items<W: Writer>(w: W, items: &[Item]) -> io::IoResult<()> {
     let mut xmlw = try!(XMLWriter::new(w));
     for item in items.iter() {
         try!(xmlw.write_item(item));
     }
-    xmlw.close()
+    let mut w = try!(xmlw.close());
+    w.flush()
 }
 
 impl<'a> Item<'a> {
