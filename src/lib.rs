@@ -6,7 +6,7 @@ use std::io;
 use std::io::BufferedWriter;
 use std::str;
 
-/// Representation of an <item>
+/// Representation of an `<item>`
 #[deriving(PartialEq,Eq,Clone)]
 pub struct Item {
     /// Identifier for the results. If given, must be unique among items, and is used for
