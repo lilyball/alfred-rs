@@ -8,33 +8,33 @@ use std::str;
 
 /// Representation of an `<item>`
 #[deriving(PartialEq,Eq,Clone)]
-pub struct Item {
+pub struct Item<'a> {
     /// Identifier for the results. If given, must be unique among items, and is used for
     /// prioritizing feedback results based on usage. If blank, Alfred uses a UUID and does
     /// not learn from the results.
-    pub uid: Option<str::MaybeOwned<'static>>,
+    pub uid: Option<str::MaybeOwned<'a>>,
     /// The value that is passed to the next portion of the workflow when this item
     /// is selected.
-    pub arg: Option<str::MaybeOwned<'static>>,
+    pub arg: Option<str::MaybeOwned<'a>>,
     /// What type of result this is, if any.
     pub type_: Option<ItemType>,
     /// Whether or not the result item is 'valid'. If `false`, `autocomplete` may be used.
     pub valid: bool,
     /// Autocomplete data for valid=false items. When this item is selected, the autocomplete
     /// value is inserted into the Alfred window.
-    pub autocomplete: Option<str::MaybeOwned<'static>>,
+    pub autocomplete: Option<str::MaybeOwned<'a>>,
 
     /// Title for the item
-    pub title: str::MaybeOwned<'static>,
+    pub title: str::MaybeOwned<'a>,
     /// Subtitle for the item
-    pub subtitle: Option<str::MaybeOwned<'static>>,
+    pub subtitle: Option<str::MaybeOwned<'a>>,
     /// Icon for the item
-    pub icon: Option<Icon>
+    pub icon: Option<Icon<'a>>
 }
 
-impl Item {
+impl<'a> Item<'a> {
     /// Returns a new Item with the given title
-    pub fn new<S: str::IntoMaybeOwned<'static>>(title: S) -> Item {
+    pub fn new<S: str::IntoMaybeOwned<'a>>(title: S) -> Item<'a> {
         Item {
             uid: None,
             arg: None,
@@ -50,13 +50,13 @@ impl Item {
 
 /// Item icons
 #[deriving(PartialEq,Eq,Clone)]
-pub enum Icon {
+pub enum Icon<'a> {
     /// Path to an image file on disk relative to the workflow directory
-    PathIcon(str::MaybeOwned<'static>),
+    PathIcon(str::MaybeOwned<'a>),
     /// Path to a file whose icon will be used
-    FileIcon(str::MaybeOwned<'static>),
+    FileIcon(str::MaybeOwned<'a>),
     /// UTI for a file type to use (e.g. public.folder)
-    FileType(str::MaybeOwned<'static>)
+    FileType(str::MaybeOwned<'a>)
 }
 
 /// Item types
@@ -66,7 +66,7 @@ pub enum ItemType {
     FileItemType
 }
 
-impl Item {
+impl<'a> Item<'a> {
     /// Writes the XML fragment representing the Item to the Writer
     pub fn write_xml(&self, w: &mut io::Writer, indent: uint) -> io::IoResult<()> {
         fn write_indent(w: &mut io::Writer, indent: uint) -> io::IoResult<()> {
