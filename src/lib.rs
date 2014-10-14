@@ -1,5 +1,7 @@
 //! Helpers for writing Alfred XML output
 
+#![warn(missing_doc)]
+
 use std::io;
 use std::io::BufferedWriter;
 use std::str;
@@ -60,6 +62,7 @@ pub enum Icon {
 /// Item types
 #[deriving(PartialEq,Eq,Clone)]
 pub enum ItemType {
+    /// Type representing a file
     FileItemType
 }
 
