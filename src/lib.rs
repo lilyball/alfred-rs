@@ -12,24 +12,24 @@ pub struct Item {
     /// Identifier for the results. If given, must be unique among items, and is used for
     /// prioritizing feedback results based on usage. If blank, Alfred uses a UUID and does
     /// not learn from the results.
-    uid: Option<str::MaybeOwned<'static>>,
+    pub uid: Option<str::MaybeOwned<'static>>,
     /// The value that is passed to the next portion of the workflow when this item
     /// is selected.
-    arg: Option<str::MaybeOwned<'static>>,
+    pub arg: Option<str::MaybeOwned<'static>>,
     /// What type of result this is, if any.
-    type_: Option<ItemType>,
+    pub type_: Option<ItemType>,
     /// Whether or not the result item is 'valid'. If `false`, `autocomplete` may be used.
-    valid: bool,
+    pub valid: bool,
     /// Autocomplete data for valid=false items. When this item is selected, the autocomplete
     /// value is inserted into the Alfred window.
-    autocomplete: Option<str::MaybeOwned<'static>>,
+    pub autocomplete: Option<str::MaybeOwned<'static>>,
 
     /// Title for the item
-    title: str::MaybeOwned<'static>,
+    pub title: str::MaybeOwned<'static>,
     /// Subtitle for the item
-    subtitle: Option<str::MaybeOwned<'static>>,
+    pub subtitle: Option<str::MaybeOwned<'static>>,
     /// Icon for the item
-    icon: Option<Icon>
+    pub icon: Option<Icon>
 }
 
 impl Item {
