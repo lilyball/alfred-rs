@@ -213,20 +213,8 @@ impl<'a> ItemBuilder<'a> {
         self
     }
 
-    /// Sets `valid` to `true`
-    pub fn valid(mut self) -> ItemBuilder<'a> {
-        self.item.valid = true;
-        self
-    }
-
-    /// Sets `valid` to `false`
-    pub fn invalid(mut self) -> ItemBuilder<'a> {
-        self.item.valid = false;
-        self
-    }
-
     /// Sets `valid` to the given value
-    pub fn set_valid(mut self, valid: bool) -> ItemBuilder<'a> {
+    pub fn valid(mut self, valid: bool) -> ItemBuilder<'a> {
         self.item.valid = valid;
         self
     }
@@ -238,13 +226,13 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `text_copy` to the given value
-    pub fn set_text_copy<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
+    pub fn text_copy<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
         self.item.text_copy = Some(text.into_maybe_owned());
         self
     }
 
     /// Sets `text_large_type` to the given value
-    pub fn set_text_large_type<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
+    pub fn text_large_type<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
         self.item.text_large_type = Some(text.into_maybe_owned());
         self
     }
