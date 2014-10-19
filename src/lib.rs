@@ -216,6 +216,12 @@ impl<'a> ItemBuilder<'a> {
         self
     }
 
+    /// Sets `valid` to the given value
+    pub fn set_valid(mut self, valid: bool) -> ItemBuilder<'a> {
+        self.item.valid = valid;
+        self
+    }
+
     /// Sets `autocomplete` to the given value
     pub fn autocomplete<S: IntoMaybeOwned<'a>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
         self.item.autocomplete = Some(autocomplete.into_maybe_owned());
