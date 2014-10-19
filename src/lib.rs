@@ -418,9 +418,9 @@ impl<'a, W: Writer + 'a> Drop for XMLWriter<'a, W> {
 /// Writes a complete XML document representing the `Item`s to the `Writer`
 ///
 /// The `Writer` is flushed after the XML document is written.
-pub fn write_items<W: Writer>(w: W, items: &[&Item]) -> io::IoResult<()> {
+pub fn write_items<W: Writer>(w: W, items: &[Item]) -> io::IoResult<()> {
     let mut xmlw = try!(XMLWriter::new(w));
-    for &item in items.iter() {
+    for item in items.iter() {
         try!(xmlw.write_item(item));
     }
     let mut w = try!(xmlw.close());
