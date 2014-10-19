@@ -156,7 +156,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `subtitle` to the given value with the given modifier
     ///
     /// This sets the subtitle to use when the given modifier is pressed.
-    pub fn subtitle_mod<S: IntoMaybeOwned<'a>>(mut self, subtitle: S, modifier: Modifier)
+    pub fn subtitle_mod<S: IntoMaybeOwned<'a>>(mut self, modifier: Modifier, subtitle: S)
                                               -> ItemBuilder<'a> {
         self.item.subtitle.insert(Some(modifier), subtitle.into_maybe_owned());
         self
