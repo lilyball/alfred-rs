@@ -149,7 +149,7 @@ impl<'a> ItemBuilder<'a> {
 impl<'a> ItemBuilder<'a> {
     /// Sets the `title` to the given value
     pub fn title<S: IntoMaybeOwned<'a>>(mut self, title: S) -> ItemBuilder<'a> {
-        self.item.title = title.into_maybe_owned();
+        self.set_title(title);
         self
     }
 
@@ -158,7 +158,7 @@ impl<'a> ItemBuilder<'a> {
     /// This sets the default subtitle, used when no modifier is pressed,
     /// or when no subtitle is provided for the pressed modifier.
     pub fn subtitle<S: IntoMaybeOwned<'a>>(mut self, subtitle: S) -> ItemBuilder<'a> {
-        self.item.subtitle.insert(None, subtitle.into_maybe_owned());
+        self.set_subtitle(subtitle);
         self
     }
 
@@ -167,23 +167,23 @@ impl<'a> ItemBuilder<'a> {
     /// This sets the subtitle to use when the given modifier is pressed.
     pub fn subtitle_mod<S: IntoMaybeOwned<'a>>(mut self, modifier: Modifier, subtitle: S)
                                               -> ItemBuilder<'a> {
-        self.item.subtitle.insert(Some(modifier), subtitle.into_maybe_owned());
+        self.set_subtitle_mod(modifier, subtitle);
         self
     }
 
     /// Sets the `icon` to an image file on disk
     ///
-    /// The path is interpreted relative to the workflow directory
+    /// The path is interpreted relative to the workflow directory.
     pub fn icon_path<S: IntoMaybeOwned<'a>>(mut self, path: S) -> ItemBuilder<'a> {
-        self.item.icon = Some(PathIcon(path.into_maybe_owned()));
+        self.set_icon_path(path);
         self
     }
 
     /// Sets the `icon` to the icon for a given file on disk
     ///
-    /// The path is interpreted relative to the workflow directory
+    /// The path is interpreted relative to the workflow directory.
     pub fn icon_file<S: IntoMaybeOwned<'a>>(mut self, path: S) -> ItemBuilder<'a> {
-        self.item.icon = Some(FileIcon(path.into_maybe_owned()));
+        self.set_icon_file(path);
         self
     }
 
@@ -191,114 +191,174 @@ impl<'a> ItemBuilder<'a> {
     ///
     /// The type is a UTI, such as "public.jpeg".
     pub fn icon_filetype<S: IntoMaybeOwned<'a>>(mut self, filetype: S) -> ItemBuilder<'a> {
-        self.item.icon = Some(FileTypeIcon(filetype.into_maybe_owned()));
+        self.set_icon_filetype(filetype);
         self
     }
 
     /// Sets the `uid` to the given value
     pub fn uid<S: IntoMaybeOwned<'a>>(mut self, uid: S) -> ItemBuilder<'a> {
-        self.item.uid = Some(uid.into_maybe_owned());
+        self.set_uid(uid);
         self
     }
 
     /// Sets the `arg` to the given value
     pub fn arg<S: IntoMaybeOwned<'a>>(mut self, arg: S) -> ItemBuilder<'a> {
-        self.item.arg = Some(arg.into_maybe_owned());
+        self.set_arg(arg);
         self
     }
 
     /// Sets the `type` to the given value
     pub fn type_(mut self, type_: ItemType) -> ItemBuilder<'a> {
-        self.item.type_ = type_;
+        self.set_type(type_);
         self
     }
 
     /// Sets `valid` to the given value
     pub fn valid(mut self, valid: bool) -> ItemBuilder<'a> {
-        self.item.valid = valid;
+        self.set_valid(valid);
         self
     }
 
     /// Sets `autocomplete` to the given value
     pub fn autocomplete<S: IntoMaybeOwned<'a>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
-        self.item.autocomplete = Some(autocomplete.into_maybe_owned());
+        self.set_autocomplete(autocomplete);
         self
     }
 
     /// Sets `text_copy` to the given value
     pub fn text_copy<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
-        self.item.text_copy = Some(text.into_maybe_owned());
+        self.set_text_copy(text);
         self
     }
 
     /// Sets `text_large_type` to the given value
     pub fn text_large_type<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
-        self.item.text_large_type = Some(text.into_maybe_owned());
+        self.set_text_large_type(text);
         self
     }
 }
 
 impl<'a> ItemBuilder<'a> {
+    /// Sets the `title` to the given value
+    pub fn set_title<S: IntoMaybeOwned<'a>>(&mut self, title: S) {
+        self.item.title = title.into_maybe_owned();
+    }
+
+    /// Sets the default `subtitle` to the given value
+    pub fn set_subtitle<S: IntoMaybeOwned<'a>>(&mut self, subtitle: S) {
+        self.item.subtitle.insert(None, subtitle.into_maybe_owned());
+    }
+
     /// Unsets the default `subtitle`
-    ///
-    /// This unsets the default subtitle.
-    pub fn unset_subtitle(mut self) -> ItemBuilder<'a> {
+    pub fn unset_subtitle(&mut self) {
         self.item.subtitle.remove(&None);
-        self
+    }
+
+    /// Sets the `subtitle` to the given value for the given modifier
+    pub fn set_subtitle_mod<S: IntoMaybeOwned<'a>>(&mut self, modifier: Modifier, subtitle: S) {
+        self.item.subtitle.insert(Some(modifier), subtitle.into_maybe_owned());
     }
 
     /// Unsets the `subtitle` for the given modifier
     ///
     /// This unsets the subtitle that's used when the given modifier is pressed.
-    pub fn unset_subtitle_mod(mut self, modifier: Modifier) -> ItemBuilder<'a> {
+    pub fn unset_subtitle_mod(&mut self, modifier: Modifier) {
         self.item.subtitle.remove(&Some(modifier));
-        self
     }
 
     /// Clears the `subtitle` for all modifiers
     ///
     /// This unsets both the default subtitle and the per-modifier subtitles.
-    pub fn clear_subtitle(mut self) -> ItemBuilder<'a> {
+    pub fn clear_subtitle(&mut self) {
         self.item.subtitle.clear();
-        self
+    }
+
+    /// Sets the `icon` to an image file on disk
+    ///
+    /// The path is interpreted relative to the workflow directory.
+    pub fn set_icon_path<S: IntoMaybeOwned<'a>>(&mut self, path: S) {
+        self.item.icon = Some(PathIcon(path.into_maybe_owned()));
+    }
+
+    /// Sets the `icon` to the icon for a given file on disk
+    ///
+    /// The path is interpreted relative to the workflow directory.
+    pub fn set_icon_file<S: IntoMaybeOwned<'a>>(&mut self, path: S) {
+        self.item.icon = Some(FileIcon(path.into_maybe_owned()));
+    }
+
+    /// Sets the `icon` to the icon for a given file type
+    ///
+    /// The type is a UTI, such as "public.jpeg".
+    pub fn set_icon_filetype<S: IntoMaybeOwned<'a>>(&mut self, filetype: S) {
+        self.item.icon = Some(FileTypeIcon(filetype.into_maybe_owned()));
     }
 
     /// Unsets the `icon`
-    pub fn unset_icon(mut self) -> ItemBuilder<'a> {
+    pub fn unset_icon(&mut self) {
         self.item.icon = None;
-        self
+    }
+
+    /// Sets the `uid` to the given value
+    pub fn set_uid<S: IntoMaybeOwned<'a>>(&mut self, uid: S) {
+        self.item.uid = Some(uid.into_maybe_owned());
     }
 
     /// Unsets the `uid`
-    pub fn unset_uid(mut self) -> ItemBuilder<'a> {
+    pub fn unset_uid(&mut self) {
         self.item.uid = None;
-        self
+    }
+
+    /// Sets the `arg` to the given value
+    pub fn set_arg<S: IntoMaybeOwned<'a>>(&mut self, arg: S) {
+        self.item.arg = Some(arg.into_maybe_owned());
     }
 
     /// Unsets the `arg`
-    pub fn unset_arg(mut self) -> ItemBuilder<'a> {
+    pub fn unset_arg(&mut self) {
         self.item.arg = None;
-        self
+    }
+
+    /// Sets the `type` to the given value
+    pub fn set_type(&mut self, type_: ItemType) {
+        self.item.type_ = type_;
     }
 
     // `type` doesn't need unsetting, it uses a default of DefaultItemType instead
 
+    /// Sets `valid` to the given value
+    pub fn set_valid(&mut self, valid: bool) {
+        self.item.valid = valid;
+    }
+
+    /// Sets `autocomplete` to the given value
+    pub fn set_autocomplete<S: IntoMaybeOwned<'a>>(&mut self, autocomplete: S) {
+        self.item.autocomplete = Some(autocomplete.into_maybe_owned());
+    }
+
     /// Unsets `autocomplete`
-    pub fn unset_autocomplete(mut self) -> ItemBuilder<'a> {
+    pub fn unset_autocomplete(&mut self) {
         self.item.autocomplete = None;
-        self
+    }
+
+    /// Sets `text_copy` to the given value
+    pub fn set_text_copy<S: IntoMaybeOwned<'a>>(&mut self, text: S) {
+        self.item.text_copy = Some(text.into_maybe_owned());
     }
 
     /// Unsets `text_copy`
-    pub fn unset_text_copy(mut self) -> ItemBuilder<'a> {
+    pub fn unset_text_copy(&mut self) {
         self.item.text_copy = None;
-        self
+    }
+
+    /// Sets `text_large_type` to the given value
+    pub fn set_text_large_type<S: IntoMaybeOwned<'a>>(&mut self, text: S) {
+        self.item.text_large_type = Some(text.into_maybe_owned());
     }
 
     /// Unsets `text_large_type`
-    pub fn unset_text_large_type(mut self) -> ItemBuilder<'a> {
+    pub fn unset_text_large_type(&mut self) {
         self.item.text_large_type = None;
-        self
     }
 }
 
