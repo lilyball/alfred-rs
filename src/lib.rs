@@ -98,7 +98,14 @@ pub struct Item<'a> {
     /// pressed. If `valid = false`, this value is populated if the item is
     /// actioned.
     pub autocomplete: Option<MaybeOwned<'a>>,
-
+    /// What text the user gets when copying the result
+    ///
+    /// This value is copied if the user presses ⌘C.
+    pub text_copy: Option<MaybeOwned<'a>>,
+    /// What text the user gets when displaying large type
+    ///
+    /// This value is displayed if the user presses ⌘L.
+    pub text_large_type: Option<MaybeOwned<'a>>,
 }
 
 impl<'a> Item<'a> {
@@ -113,6 +120,8 @@ impl<'a> Item<'a> {
             type_: DefaultItemType,
             valid: true,
             autocomplete: None,
+            text_copy: None,
+            text_large_type: None,
         }
     }
 }
@@ -227,6 +236,18 @@ impl<'a> ItemBuilder<'a> {
         self.item.autocomplete = Some(autocomplete.into_maybe_owned());
         self
     }
+
+    /// Sets `text_copy` to the given value
+    pub fn set_text_copy<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
+        self.item.text_copy = Some(text.into_maybe_owned());
+        self
+    }
+
+    /// Sets `text_large_type` to the given value
+    pub fn set_text_large_type<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
+        self.item.text_large_type = Some(text.into_maybe_owned());
+        self
+    }
 }
 
 impl<'a> ItemBuilder<'a> {
@@ -277,6 +298,18 @@ impl<'a> ItemBuilder<'a> {
     /// Unsets `autocomplete`
     pub fn unset_autocomplete(mut self) -> ItemBuilder<'a> {
         self.item.autocomplete = None;
+        self
+    }
+
+    /// Unsets `text_copy`
+    pub fn unset_text_copy(mut self) -> ItemBuilder<'a> {
+        self.item.text_copy = None;
+        self
+    }
+
+    /// Unsets `text_large_type`
+    pub fn unset_text_large_type(mut self) -> ItemBuilder<'a> {
+        self.item.text_large_type = None;
         self
     }
 }
@@ -501,6 +534,16 @@ impl<'a> Item<'a> {
                                     encode_entities(s.as_slice())));
                 }
             }
+        }
+
+        if let Some(ref text) = self.text_copy {
+            try!(write_indent(&mut w, indent+1));
+            try!(write!(w, "<text type=\"copy\">{}</text>\n", encode_entities(text.as_slice())));
+        }
+        if let Some(ref text) = self.text_large_type {
+            try!(write_indent(&mut w, indent+1));
+            try!(write!(w, "<text type=\"largetype\">{}</text>\n",
+                        encode_entities(text.as_slice())));
         }
 
         try!(write_indent(&mut w, indent));
