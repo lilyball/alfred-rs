@@ -11,16 +11,14 @@
 //!     let mut xmlw = try!(alfred::XMLWriter::new(io::stdout()));
 //!
 //!     let item1 = alfred::Item::new("Item 1");
-//!     let item2 = alfred::Item {
-//!         subtitle: Some("Subtitle".into_maybe_owned()),
-//!         ..alfred::Item::new("Item 2")
-//!     };
-//!     let item3 = alfred::Item {
-//!         arg: Some("Argument".into_maybe_owned()),
-//!         subtitle: Some("Subtitle".into_maybe_owned()),
-//!         icon: Some(alfred::FileType("public.folder".into_maybe_owned())),
-//!         ..alfred::Item::new("Item 3")
-//!     };
+//!     let item2 = alfred::ItemBuilder::new("Item 2")
+//!                                     .subtitle("Subtitle")
+//!                                     .into_item();
+//!     let item3 = alfred::ItemBuilder::new("Item 3")
+//!                                     .arg("Argument")
+//!                                     .subtitle("Subtitle")
+//!                                     .icon_filetype("public.folder")
+//!                                     .into_item();
 //!
 //!     try!(xmlw.write_item(&item1));
 //!     try!(xmlw.write_item(&item2));
@@ -40,54 +38,257 @@
 //! }
 //! ```
 
+// example environment for a script filter:
+//
+// alfred_preferences = /Users/kevin/Dropbox (Personal)/Alfred.alfredpreferences
+// alfred_preferences_localhash = 24e980586e9906f9f08aa9febc3ef05f603e58ef
+// alfred_theme = alfred.theme.yosemite
+// alfred_theme_background = rgba(255,255,255,0.98)
+// alfred_theme_subtext = 0
+// alfred_version = 2.5
+// alfred_version_build = 299
+// alfred_workflow_bundleid = com.tildesoft.alfred.workflow.github-quick-open
+// alfred_workflow_cache = /Users/kevin/Library/Caches/com.runningwithcrayons.Alfred-2/Workflow Data/com.tildesoft.alfred.workflow.github-quick-open
+// alfred_workflow_data = /Users/kevin/Library/Application Support/Alfred 2/Workflow Data/com.tildesoft.alfred.workflow.github-quick-open
+// alfred_workflow_name = GitHub Quick Open
+// alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
+
 #![feature(if_let, unsafe_destructor)]
 #![warn(missing_doc)]
 
+use std::collections::HashMap;
 use std::io;
 use std::io::BufferedWriter;
 use std::mem;
 use std::str;
+use std::str::{MaybeOwned, IntoMaybeOwned};
 
 /// Representation of an `<item>`
 #[deriving(PartialEq,Eq,Clone)]
 pub struct Item<'a> {
-    /// Identifier for the results. If given, must be unique among items, and is used for
-    /// prioritizing feedback results based on usage. If blank, Alfred uses a UUID and does
-    /// not learn from the results.
-    pub uid: Option<str::MaybeOwned<'a>>,
-    /// The value that is passed to the next portion of the workflow when this item
-    /// is selected.
-    pub arg: Option<str::MaybeOwned<'a>>,
-    /// What type of result this is, if any.
-    pub type_: Option<ItemType>,
-    /// Whether or not the result item is 'valid'. If `false`, `autocomplete` may be used.
-    pub valid: bool,
-    /// Autocomplete data for valid=false items. When this item is selected, the autocomplete
-    /// value is inserted into the Alfred window.
-    pub autocomplete: Option<str::MaybeOwned<'a>>,
-
     /// Title for the item
-    pub title: str::MaybeOwned<'a>,
+    pub title: MaybeOwned<'a>,
     /// Subtitle for the item
-    pub subtitle: Option<str::MaybeOwned<'a>>,
+    ///
+    /// The subtitle may differ based on the active modifier.
+    pub subtitle: HashMap<Option<Modifier>,MaybeOwned<'a>>,
     /// Icon for the item
-    pub icon: Option<Icon<'a>>
+    pub icon: Option<Icon<'a>>,
+
+    /// Identifier for the results
+    ///
+    /// If given, must be unique among items, and is used for prioritizing
+    /// feedback results based on usage. If blank, Alfred presents results in
+    /// the order given and does not learn from them.
+    pub uid: Option<MaybeOwned<'a>>,
+    /// The value that is passed to the next portion of the workflow when this
+    /// item is selected
+    pub arg: Option<MaybeOwned<'a>>,
+    /// What type of result this is
+    pub type_: ItemType,
+
+    /// Whether or not the result is valid
+    ///
+    /// When `false`, actioning the result will populate the search field with
+    /// the `autocomplete` value instead.
+    pub valid: bool,
+    /// Autocomplete data for the item
+    ///
+    /// This value is populated into the search field if the tab key is
+    /// pressed. If `valid = false`, this value is populated if the item is
+    /// actioned.
+    pub autocomplete: Option<MaybeOwned<'a>>,
+
 }
 
 impl<'a> Item<'a> {
-    /// Returns a new Item with the given title
-    pub fn new<S: str::IntoMaybeOwned<'a>>(title: S) -> Item<'a> {
+    /// Returns a new `Item` with the given title
+    pub fn new<S: IntoMaybeOwned<'a>>(title: S) -> Item<'a> {
         Item {
+            title: title.into_maybe_owned(),
+            subtitle: HashMap::new(),
+            icon: None,
             uid: None,
             arg: None,
-            type_: None,
+            type_: DefaultItemType,
             valid: true,
             autocomplete: None,
-            title: title.into_maybe_owned(),
-            subtitle: None,
-            icon: None
         }
     }
+}
+
+/// Helper for building `Item` values
+#[deriving(Clone)]
+pub struct ItemBuilder<'a> {
+    item: Item<'a>
+}
+
+impl<'a> ItemBuilder<'a> {
+    /// Returns a new `ItemBuilder` with the given title
+    pub fn new<S: IntoMaybeOwned<'a>>(title: S) -> ItemBuilder<'a> {
+        ItemBuilder {
+            item: Item::new(title)
+        }
+    }
+
+    /// Returns the built `Item`
+    pub fn into_item(self) -> Item<'a> {
+        self.item
+    }
+}
+
+impl<'a> ItemBuilder<'a> {
+    /// Sets the `title` to the given value
+    pub fn title<S: IntoMaybeOwned<'a>>(mut self, title: S) -> ItemBuilder<'a> {
+        self.item.title = title.into_maybe_owned();
+        self
+    }
+
+    /// Sets the default `subtitle` to the given value
+    ///
+    /// This sets the default subtitle, used when no modifier is pressed,
+    /// or when no subtitle is provided for the pressed modifier.
+    pub fn subtitle<S: IntoMaybeOwned<'a>>(mut self, subtitle: S) -> ItemBuilder<'a> {
+        self.item.subtitle.insert(None, subtitle.into_maybe_owned());
+        self
+    }
+
+    /// Sets the `subtitle` to the given value with the given modifier
+    ///
+    /// This sets the subtitle to use when the given modifier is pressed.
+    pub fn subtitle_mod<S: IntoMaybeOwned<'a>>(mut self, subtitle: S, modifier: Modifier)
+                                              -> ItemBuilder<'a> {
+        self.item.subtitle.insert(Some(modifier), subtitle.into_maybe_owned());
+        self
+    }
+
+    /// Sets the `icon` to an image file on disk
+    ///
+    /// The path is interpreted relative to the workflow directory
+    pub fn icon_path<S: IntoMaybeOwned<'a>>(mut self, path: S) -> ItemBuilder<'a> {
+        self.item.icon = Some(PathIcon(path.into_maybe_owned()));
+        self
+    }
+
+    /// Sets the `icon` to the icon for a given file on disk
+    ///
+    /// The path is interpreted relative to the workflow directory
+    pub fn icon_file<S: IntoMaybeOwned<'a>>(mut self, path: S) -> ItemBuilder<'a> {
+        self.item.icon = Some(FileIcon(path.into_maybe_owned()));
+        self
+    }
+
+    /// Sets the `icon` to the icon for a given file type
+    ///
+    /// The type is a UTI, such as "public.jpeg".
+    pub fn icon_filetype<S: IntoMaybeOwned<'a>>(mut self, filetype: S) -> ItemBuilder<'a> {
+        self.item.icon = Some(FileTypeIcon(filetype.into_maybe_owned()));
+        self
+    }
+
+    /// Sets the `uid` to the given value
+    pub fn uid<S: IntoMaybeOwned<'a>>(mut self, uid: S) -> ItemBuilder<'a> {
+        self.item.uid = Some(uid.into_maybe_owned());
+        self
+    }
+
+    /// Sets the `arg` to the given value
+    pub fn arg<S: IntoMaybeOwned<'a>>(mut self, arg: S) -> ItemBuilder<'a> {
+        self.item.arg = Some(arg.into_maybe_owned());
+        self
+    }
+
+    /// Sets the `type` to the given value
+    pub fn type_(mut self, type_: ItemType) -> ItemBuilder<'a> {
+        self.item.type_ = type_;
+        self
+    }
+
+    /// Sets `valid` to `true`
+    pub fn valid(mut self) -> ItemBuilder<'a> {
+        self.item.valid = true;
+        self
+    }
+
+    /// Sets `valid` to `false`
+    pub fn invalid(mut self) -> ItemBuilder<'a> {
+        self.item.valid = false;
+        self
+    }
+
+    /// Sets `autocomplete` to the given value
+    pub fn autocomplete<S: IntoMaybeOwned<'a>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
+        self.item.autocomplete = Some(autocomplete.into_maybe_owned());
+        self
+    }
+}
+
+impl<'a> ItemBuilder<'a> {
+    /// Unsets the default `subtitle`
+    ///
+    /// This unsets the default subtitle.
+    pub fn unset_subtitle(mut self) -> ItemBuilder<'a> {
+        self.item.subtitle.remove(&None);
+        self
+    }
+
+    /// Unsets the `subtitle` for the given modifier
+    ///
+    /// This unsets the subtitle that's used when the given modifier is pressed.
+    pub fn unset_subtitle_mod(mut self, modifier: Modifier) -> ItemBuilder<'a> {
+        self.item.subtitle.remove(&Some(modifier));
+        self
+    }
+
+    /// Clears the `subtitle` for all modifiers
+    ///
+    /// This unsets both the default subtitle and the per-modifier subtitles.
+    pub fn clear_subtitle(mut self) -> ItemBuilder<'a> {
+        self.item.subtitle.clear();
+        self
+    }
+
+    /// Unsets the `icon`
+    pub fn unset_icon(mut self) -> ItemBuilder<'a> {
+        self.item.icon = None;
+        self
+    }
+
+    /// Unsets the `uid`
+    pub fn unset_uid(mut self) -> ItemBuilder<'a> {
+        self.item.uid = None;
+        self
+    }
+
+    /// Unsets the `arg`
+    pub fn unset_arg(mut self) -> ItemBuilder<'a> {
+        self.item.arg = None;
+        self
+    }
+
+    // `type` doesn't need unsetting, it uses a default of DefaultItemType instead
+
+    /// Unsets `autocomplete`
+    pub fn unset_autocomplete(mut self) -> ItemBuilder<'a> {
+        self.item.autocomplete = None;
+        self
+    }
+}
+
+/// Keyboard modifiers
+// As far as I can tell, Alfred doesn't support modifier combinations.
+#[deriving(Clone,Show,Hash,PartialEq,Eq)]
+pub enum Modifier {
+    /// Command key
+    CmdModifier,
+    /// Option/Alt key
+    AltModifier,
+    /// Control key
+    CtrlModifier,
+    /// Shift key
+    ShiftModifier,
+    /// Fn key
+    FnModifier
 }
 
 /// Item icons
@@ -98,14 +299,24 @@ pub enum Icon<'a> {
     /// Path to a file whose icon will be used
     FileIcon(str::MaybeOwned<'a>),
     /// UTI for a file type to use (e.g. public.folder)
-    FileType(str::MaybeOwned<'a>)
+    FileTypeIcon(str::MaybeOwned<'a>)
 }
 
 /// Item types
 #[deriving(PartialEq,Eq,Clone)]
 pub enum ItemType {
+    /// Default type for an item
+    DefaultItemType,
     /// Type representing a file
-    FileItemType
+    ///
+    /// Alredy checks that the file exists on disk, and hides the result if it
+    /// does not.
+    FileItemType,
+    /// Type representing a file, with filesystem checks skipped
+    ///
+    /// Similar to `FileItemType` but skips the check to ensure the file
+    /// exists.
+    FileSkipCheckItemType
 }
 
 /// Helper struct used to manage the XML serialization of `Item`s
@@ -227,60 +438,61 @@ impl<'a> Item<'a> {
 
         try!(write_indent(&mut w, indent));
         try!(w.write_str("<item"));
-        match self.uid {
-            None => (),
-            Some(ref uid) => {
-                try!(write!(&mut w, r#" uid="{}""#, encode_entities(uid.as_slice())));
-            }
+        if let Some(ref uid) = self.uid {
+            try!(write!(&mut w, r#" uid="{}""#, encode_entities(uid.as_slice())));
         }
-        match self.arg {
-            None => (),
-            Some(ref arg) => {
-                try!(write!(&mut w, r#" arg="{}""#, encode_entities(arg.as_slice())));
-            }
+        if let Some(ref arg) = self.arg {
+            try!(write!(&mut w, r#" arg="{}""#, encode_entities(arg.as_slice())));
         }
         match self.type_ {
-            None => (),
-            Some(FileItemType) => {
+            DefaultItemType => {}
+            FileItemType => {
                 try!(w.write_str(r#" type="file""#));
             }
-        }
-        try!(write!(&mut w, r#" valid="{}""#, if self.valid { "yes" } else { "no" }));
-        match self.autocomplete {
-            None => (),
-            Some(ref auto) => {
-                try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(auto.as_slice())));
+            FileSkipCheckItemType => {
+                try!(w.write_str(r#" type="file:skipcheck""#));
             }
+        }
+        if !self.valid {
+            try!(w.write_str(r#" valid="no""#));
+        }
+        if let Some(ref auto) = self.autocomplete {
+            try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(auto.as_slice())));
         }
         try!(w.write_str(">\n"));
 
         try!(write_indent(&mut w, indent+1));
         try!(write!(&mut w, "<title>{}</title>\n", encode_entities(self.title.as_slice())));
 
-        match self.subtitle {
-            None => (),
-            Some(ref s) => {
-                try!(write_indent(&mut w, indent+1));
-                try!(write!(&mut w, "<subtitle>{}</subtitle>\n", encode_entities(s.as_slice())));
+        for (modifier, subtitle) in self.subtitle.iter() {
+            try!(write_indent(&mut w, indent+1));
+            if let Some(modifier) = *modifier {
+                try!(write!(w, r#"<subtitle mod="{}">"#, match modifier {
+                    CmdModifier => "cmd",
+                    AltModifier => "alt",
+                    CtrlModifier => "ctrl",
+                    ShiftModifier => "shift",
+                    FnModifier => "fn"
+                }));
+            } else {
+                try!(w.write_str("<subtitle>"));
             }
+            try!(write!(w, "{}</subtitle>\n", encode_entities(subtitle.as_slice())));
         }
 
-        match self.icon {
-            None => (),
-            Some(ref icon) => {
-                try!(write_indent(&mut w, indent+1));
-                match *icon {
-                    PathIcon(ref s) => {
-                        try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(s.as_slice())));
-                    }
-                    FileIcon(ref s) => {
-                        try!(write!(&mut w, "<icon type=\"fileicon\">{}</icon>\n",
-                                      encode_entities(s.as_slice())));
-                    }
-                    FileType(ref s) => {
-                        try!(write!(&mut w, "<icon type=\"filetype\">{}</icon>\n",
-                                      encode_entities(s.as_slice())));
-                    }
+        if let Some(ref icon) = self.icon {
+            try!(write_indent(&mut w, indent+1));
+            match *icon {
+                PathIcon(ref s) => {
+                    try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(s.as_slice())));
+                }
+                FileIcon(ref s) => {
+                    try!(write!(&mut w, "<icon type=\"fileicon\">{}</icon>\n",
+                                    encode_entities(s.as_slice())));
+                }
+                FileTypeIcon(ref s) => {
+                    try!(write!(&mut w, "<icon type=\"filetype\">{}</icon>\n",
+                                    encode_entities(s.as_slice())));
                 }
             }
         }
@@ -288,8 +500,7 @@ impl<'a> Item<'a> {
         try!(write_indent(&mut w, indent));
         try!(w.write_str("</item>\n"));
 
-        try!(w.flush());
-        Ok(())
+        w.flush()
     }
 }
 
