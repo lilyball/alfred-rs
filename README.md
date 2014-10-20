@@ -1,5 +1,7 @@
 # alfred-rs
 
+[![Build Status](https://travis-ci.org/kballard/alfred-rs.svg?branch=master)](https://travis-ci.org/kballard/alfred-rs)
+
 Rust library to help with creating [Alfred 2][alfred] [Workflows][].
 
 [alfred]: http://www.alfredapp.com
