@@ -3,3 +3,14 @@
 name = "alfred"
 version = "0.0.1"
 authors = ["Kevin Ballard <kevin@sb.org>"]
+description = """
+A library for writing Alfred workflows.
+
+http://www.alfredapp.com
+"""
+
+documentation = "http://www.rust-ci.org/kballard/alfred-rs/doc/alfred/"
+repository = "https://github.com/kballard/alfred-rs"
+
+readme = "README.md"
+license = "MIT"
