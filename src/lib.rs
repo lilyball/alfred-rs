@@ -54,7 +54,7 @@
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
 #![feature(if_let, unsafe_destructor)]
-#![warn(missing_doc)]
+#![warn(missing_docs)]
 
 use std::collections::HashMap;
 use std::io;
@@ -117,7 +117,7 @@ impl<'a> Item<'a> {
             icon: None,
             uid: None,
             arg: None,
-            type_: DefaultItemType,
+            type_: ItemType::Default,
             valid: true,
             autocomplete: None,
             text_copy: None,
@@ -277,21 +277,21 @@ impl<'a> ItemBuilder<'a> {
     ///
     /// The path is interpreted relative to the workflow directory.
     pub fn set_icon_path<S: IntoMaybeOwned<'a>>(&mut self, path: S) {
-        self.item.icon = Some(PathIcon(path.into_maybe_owned()));
+        self.item.icon = Some(Icon::Path(path.into_maybe_owned()));
     }
 
     /// Sets the `icon` to the icon for a given file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
     pub fn set_icon_file<S: IntoMaybeOwned<'a>>(&mut self, path: S) {
-        self.item.icon = Some(FileIcon(path.into_maybe_owned()));
+        self.item.icon = Some(Icon::File(path.into_maybe_owned()));
     }
 
     /// Sets the `icon` to the icon for a given file type
     ///
     /// The type is a UTI, such as "public.jpeg".
     pub fn set_icon_filetype<S: IntoMaybeOwned<'a>>(&mut self, filetype: S) {
-        self.item.icon = Some(FileTypeIcon(filetype.into_maybe_owned()));
+        self.item.icon = Some(Icon::FileType(filetype.into_maybe_owned()));
     }
 
     /// Unsets the `icon`
@@ -367,43 +367,42 @@ impl<'a> ItemBuilder<'a> {
 #[deriving(Clone,Show,Hash,PartialEq,Eq)]
 pub enum Modifier {
     /// Command key
-    CmdModifier,
+    Command,
     /// Option/Alt key
-    AltModifier,
+    Option,
     /// Control key
-    CtrlModifier,
+    Control,
     /// Shift key
-    ShiftModifier,
+    Shift,
     /// Fn key
-    FnModifier
+    Fn
 }
 
 /// Item icons
 #[deriving(PartialEq,Eq,Clone)]
 pub enum Icon<'a> {
     /// Path to an image file on disk relative to the workflow directory
-    PathIcon(str::MaybeOwned<'a>),
+    Path(str::MaybeOwned<'a>),
     /// Path to a file whose icon will be used
-    FileIcon(str::MaybeOwned<'a>),
+    File(str::MaybeOwned<'a>),
     /// UTI for a file type to use (e.g. public.folder)
-    FileTypeIcon(str::MaybeOwned<'a>)
+    FileType(str::MaybeOwned<'a>)
 }
 
 /// Item types
 #[deriving(PartialEq,Eq,Clone)]
 pub enum ItemType {
     /// Default type for an item
-    DefaultItemType,
+    Default,
     /// Type representing a file
     ///
     /// Alredy checks that the file exists on disk, and hides the result if it
     /// does not.
-    FileItemType,
+    File,
     /// Type representing a file, with filesystem checks skipped
     ///
-    /// Similar to `FileItemType` but skips the check to ensure the file
-    /// exists.
-    FileSkipCheckItemType
+    /// Similar to `File` but skips the check to ensure the file exists.
+    FileSkipCheck
 }
 
 /// Helper struct used to manage the XML serialization of `Item`s
@@ -532,11 +531,11 @@ impl<'a> Item<'a> {
             try!(write!(&mut w, r#" arg="{}""#, encode_entities(arg.as_slice())));
         }
         match self.type_ {
-            DefaultItemType => {}
-            FileItemType => {
+            ItemType::Default => {}
+            ItemType::File => {
                 try!(w.write_str(r#" type="file""#));
             }
-            FileSkipCheckItemType => {
+            ItemType::FileSkipCheck => {
                 try!(w.write_str(r#" type="file:skipcheck""#));
             }
         }
@@ -555,11 +554,11 @@ impl<'a> Item<'a> {
             try!(write_indent(&mut w, indent+1));
             if let Some(modifier) = *modifier {
                 try!(write!(w, r#"<subtitle mod="{}">"#, match modifier {
-                    CmdModifier => "cmd",
-                    AltModifier => "alt",
-                    CtrlModifier => "ctrl",
-                    ShiftModifier => "shift",
-                    FnModifier => "fn"
+                    Modifier::Command => "cmd",
+                    Modifier::Option => "alt",
+                    Modifier::Control => "ctrl",
+                    Modifier::Shift => "shift",
+                    Modifier::Fn => "fn"
                 }));
             } else {
                 try!(w.write_str("<subtitle>"));
@@ -570,14 +569,14 @@ impl<'a> Item<'a> {
         if let Some(ref icon) = self.icon {
             try!(write_indent(&mut w, indent+1));
             match *icon {
-                PathIcon(ref s) => {
+                Icon::Path(ref s) => {
                     try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(s.as_slice())));
                 }
-                FileIcon(ref s) => {
+                Icon::File(ref s) => {
                     try!(write!(&mut w, "<icon type=\"fileicon\">{}</icon>\n",
                                     encode_entities(s.as_slice())));
                 }
-                FileTypeIcon(ref s) => {
+                Icon::FileType(ref s) => {
                     try!(write!(&mut w, "<icon type=\"filetype\">{}</icon>\n",
                                     encode_entities(s.as_slice())));
                 }
