@@ -553,7 +553,7 @@ impl<'a> Item<'a> {
         for (modifier, subtitle) in self.subtitle.iter() {
             try!(write_indent(&mut w, indent+1));
             if let Some(modifier) = *modifier {
-                try!(write!(w, r#"<subtitle mod="{}">"#, match modifier {
+                try!(write!(&mut w, r#"<subtitle mod="{}">"#, match modifier {
                     Modifier::Command => "cmd",
                     Modifier::Option => "alt",
                     Modifier::Control => "ctrl",
@@ -563,7 +563,7 @@ impl<'a> Item<'a> {
             } else {
                 try!(w.write_str("<subtitle>"));
             }
-            try!(write!(w, "{}</subtitle>\n", encode_entities(subtitle.as_slice())));
+            try!(write!(&mut w, "{}</subtitle>\n", encode_entities(subtitle.as_slice())));
         }
 
         if let Some(ref icon) = self.icon {
@@ -585,11 +585,11 @@ impl<'a> Item<'a> {
 
         if let Some(ref text) = self.text_copy {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(w, "<text type=\"copy\">{}</text>\n", encode_entities(text.as_slice())));
+            try!(write!(&mut w, "<text type=\"copy\">{}</text>\n", encode_entities(text.as_slice())));
         }
         if let Some(ref text) = self.text_large_type {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(w, "<text type=\"largetype\">{}</text>\n",
+            try!(write!(&mut w, "<text type=\"largetype\">{}</text>\n",
                         encode_entities(text.as_slice())));
         }
 
