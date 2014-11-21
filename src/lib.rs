@@ -32,7 +32,7 @@
 //!     match write_items() {
 //!         Ok(()) => {},
 //!         Err(err) => {
-//!             let _ = writeln!(io::stderr(), "Error writing items: {}", err);
+//!             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
 //!         }
 //!     }
 //! }
