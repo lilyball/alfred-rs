@@ -53,7 +53,7 @@
 // alfred_workflow_name = GitHub Quick Open
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
-#![feature(if_let, unsafe_destructor)]
+#![feature(unsafe_destructor)]
 #![warn(missing_docs)]
 
 use std::collections::HashMap;
@@ -364,7 +364,7 @@ impl<'a> ItemBuilder<'a> {
 
 /// Keyboard modifiers
 // As far as I can tell, Alfred doesn't support modifier combinations.
-#[deriving(Clone,Show,Hash,PartialEq,Eq)]
+#[deriving(Clone,Copy,Show,Hash,PartialEq,Eq)]
 pub enum Modifier {
     /// Command key
     Command,
@@ -390,7 +390,7 @@ pub enum Icon<'a> {
 }
 
 /// Item types
-#[deriving(PartialEq,Eq,Clone)]
+#[deriving(PartialEq,Eq,Clone,Copy)]
 pub enum ItemType {
     /// Default type for an item
     Default,
