@@ -60,18 +60,17 @@ use std::collections::HashMap;
 use std::io;
 use std::io::BufferedWriter;
 use std::mem;
-use std::str;
-use std::str::{MaybeOwned, IntoMaybeOwned};
+use std::str::CowString;
 
 /// Representation of an `<item>`
 #[deriving(PartialEq,Eq,Clone)]
 pub struct Item<'a> {
     /// Title for the item
-    pub title: MaybeOwned<'a>,
+    pub title: CowString<'a>,
     /// Subtitle for the item
     ///
     /// The subtitle may differ based on the active modifier.
-    pub subtitle: HashMap<Option<Modifier>,MaybeOwned<'a>>,
+    pub subtitle: HashMap<Option<Modifier>,CowString<'a>>,
     /// Icon for the item
     pub icon: Option<Icon<'a>>,
 
@@ -80,10 +79,10 @@ pub struct Item<'a> {
     /// If given, must be unique among items, and is used for prioritizing
     /// feedback results based on usage. If blank, Alfred presents results in
     /// the order given and does not learn from them.
-    pub uid: Option<MaybeOwned<'a>>,
+    pub uid: Option<CowString<'a>>,
     /// The value that is passed to the next portion of the workflow when this
     /// item is selected
-    pub arg: Option<MaybeOwned<'a>>,
+    pub arg: Option<CowString<'a>>,
     /// What type of result this is
     pub type_: ItemType,
 
@@ -97,22 +96,22 @@ pub struct Item<'a> {
     /// This value is populated into the search field if the tab key is
     /// pressed. If `valid = false`, this value is populated if the item is
     /// actioned.
-    pub autocomplete: Option<MaybeOwned<'a>>,
+    pub autocomplete: Option<CowString<'a>>,
     /// What text the user gets when copying the result
     ///
     /// This value is copied if the user presses ⌘C.
-    pub text_copy: Option<MaybeOwned<'a>>,
+    pub text_copy: Option<CowString<'a>>,
     /// What text the user gets when displaying large type
     ///
     /// This value is displayed if the user presses ⌘L.
-    pub text_large_type: Option<MaybeOwned<'a>>,
+    pub text_large_type: Option<CowString<'a>>,
 }
 
 impl<'a> Item<'a> {
     /// Returns a new `Item` with the given title
-    pub fn new<S: IntoMaybeOwned<'a>>(title: S) -> Item<'a> {
+    pub fn new<S: IntoCow<'a, String, str>>(title: S) -> Item<'a> {
         Item {
-            title: title.into_maybe_owned(),
+            title: title.into_cow(),
             subtitle: HashMap::new(),
             icon: None,
             uid: None,
@@ -134,7 +133,7 @@ pub struct ItemBuilder<'a> {
 
 impl<'a> ItemBuilder<'a> {
     /// Returns a new `ItemBuilder` with the given title
-    pub fn new<S: IntoMaybeOwned<'a>>(title: S) -> ItemBuilder<'a> {
+    pub fn new<S: IntoCow<'a, String, str>>(title: S) -> ItemBuilder<'a> {
         ItemBuilder {
             item: Item::new(title)
         }
@@ -148,7 +147,7 @@ impl<'a> ItemBuilder<'a> {
 
 impl<'a> ItemBuilder<'a> {
     /// Sets the `title` to the given value
-    pub fn title<S: IntoMaybeOwned<'a>>(mut self, title: S) -> ItemBuilder<'a> {
+    pub fn title<S: IntoCow<'a, String, str>>(mut self, title: S) -> ItemBuilder<'a> {
         self.set_title(title);
         self
     }
@@ -157,7 +156,7 @@ impl<'a> ItemBuilder<'a> {
     ///
     /// This sets the default subtitle, used when no modifier is pressed,
     /// or when no subtitle is provided for the pressed modifier.
-    pub fn subtitle<S: IntoMaybeOwned<'a>>(mut self, subtitle: S) -> ItemBuilder<'a> {
+    pub fn subtitle<S: IntoCow<'a, String, str>>(mut self, subtitle: S) -> ItemBuilder<'a> {
         self.set_subtitle(subtitle);
         self
     }
@@ -165,7 +164,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `subtitle` to the given value with the given modifier
     ///
     /// This sets the subtitle to use when the given modifier is pressed.
-    pub fn subtitle_mod<S: IntoMaybeOwned<'a>>(mut self, modifier: Modifier, subtitle: S)
+    pub fn subtitle_mod<S: IntoCow<'a, String, str>>(mut self, modifier: Modifier, subtitle: S)
                                               -> ItemBuilder<'a> {
         self.set_subtitle_mod(modifier, subtitle);
         self
@@ -174,7 +173,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to an image file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn icon_path<S: IntoMaybeOwned<'a>>(mut self, path: S) -> ItemBuilder<'a> {
+    pub fn icon_path<S: IntoCow<'a, String, str>>(mut self, path: S) -> ItemBuilder<'a> {
         self.set_icon_path(path);
         self
     }
@@ -182,7 +181,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to the icon for a given file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn icon_file<S: IntoMaybeOwned<'a>>(mut self, path: S) -> ItemBuilder<'a> {
+    pub fn icon_file<S: IntoCow<'a, String, str>>(mut self, path: S) -> ItemBuilder<'a> {
         self.set_icon_file(path);
         self
     }
@@ -190,19 +189,19 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to the icon for a given file type
     ///
     /// The type is a UTI, such as "public.jpeg".
-    pub fn icon_filetype<S: IntoMaybeOwned<'a>>(mut self, filetype: S) -> ItemBuilder<'a> {
+    pub fn icon_filetype<S: IntoCow<'a, String, str>>(mut self, filetype: S) -> ItemBuilder<'a> {
         self.set_icon_filetype(filetype);
         self
     }
 
     /// Sets the `uid` to the given value
-    pub fn uid<S: IntoMaybeOwned<'a>>(mut self, uid: S) -> ItemBuilder<'a> {
+    pub fn uid<S: IntoCow<'a, String, str>>(mut self, uid: S) -> ItemBuilder<'a> {
         self.set_uid(uid);
         self
     }
 
     /// Sets the `arg` to the given value
-    pub fn arg<S: IntoMaybeOwned<'a>>(mut self, arg: S) -> ItemBuilder<'a> {
+    pub fn arg<S: IntoCow<'a, String, str>>(mut self, arg: S) -> ItemBuilder<'a> {
         self.set_arg(arg);
         self
     }
@@ -220,19 +219,19 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `autocomplete` to the given value
-    pub fn autocomplete<S: IntoMaybeOwned<'a>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
+    pub fn autocomplete<S: IntoCow<'a, String, str>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
         self.set_autocomplete(autocomplete);
         self
     }
 
     /// Sets `text_copy` to the given value
-    pub fn text_copy<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
+    pub fn text_copy<S: IntoCow<'a, String, str>>(mut self, text: S) -> ItemBuilder<'a> {
         self.set_text_copy(text);
         self
     }
 
     /// Sets `text_large_type` to the given value
-    pub fn text_large_type<S: IntoMaybeOwned<'a>>(mut self, text: S) -> ItemBuilder<'a> {
+    pub fn text_large_type<S: IntoCow<'a, String, str>>(mut self, text: S) -> ItemBuilder<'a> {
         self.set_text_large_type(text);
         self
     }
@@ -240,13 +239,13 @@ impl<'a> ItemBuilder<'a> {
 
 impl<'a> ItemBuilder<'a> {
     /// Sets the `title` to the given value
-    pub fn set_title<S: IntoMaybeOwned<'a>>(&mut self, title: S) {
-        self.item.title = title.into_maybe_owned();
+    pub fn set_title<S: IntoCow<'a, String, str>>(&mut self, title: S) {
+        self.item.title = title.into_cow();
     }
 
     /// Sets the default `subtitle` to the given value
-    pub fn set_subtitle<S: IntoMaybeOwned<'a>>(&mut self, subtitle: S) {
-        self.item.subtitle.insert(None, subtitle.into_maybe_owned());
+    pub fn set_subtitle<S: IntoCow<'a, String, str>>(&mut self, subtitle: S) {
+        self.item.subtitle.insert(None, subtitle.into_cow());
     }
 
     /// Unsets the default `subtitle`
@@ -255,8 +254,8 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets the `subtitle` to the given value for the given modifier
-    pub fn set_subtitle_mod<S: IntoMaybeOwned<'a>>(&mut self, modifier: Modifier, subtitle: S) {
-        self.item.subtitle.insert(Some(modifier), subtitle.into_maybe_owned());
+    pub fn set_subtitle_mod<S: IntoCow<'a, String, str>>(&mut self, modifier: Modifier, subtitle: S) {
+        self.item.subtitle.insert(Some(modifier), subtitle.into_cow());
     }
 
     /// Unsets the `subtitle` for the given modifier
@@ -276,22 +275,22 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to an image file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn set_icon_path<S: IntoMaybeOwned<'a>>(&mut self, path: S) {
-        self.item.icon = Some(Icon::Path(path.into_maybe_owned()));
+    pub fn set_icon_path<S: IntoCow<'a, String, str>>(&mut self, path: S) {
+        self.item.icon = Some(Icon::Path(path.into_cow()));
     }
 
     /// Sets the `icon` to the icon for a given file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn set_icon_file<S: IntoMaybeOwned<'a>>(&mut self, path: S) {
-        self.item.icon = Some(Icon::File(path.into_maybe_owned()));
+    pub fn set_icon_file<S: IntoCow<'a, String, str>>(&mut self, path: S) {
+        self.item.icon = Some(Icon::File(path.into_cow()));
     }
 
     /// Sets the `icon` to the icon for a given file type
     ///
     /// The type is a UTI, such as "public.jpeg".
-    pub fn set_icon_filetype<S: IntoMaybeOwned<'a>>(&mut self, filetype: S) {
-        self.item.icon = Some(Icon::FileType(filetype.into_maybe_owned()));
+    pub fn set_icon_filetype<S: IntoCow<'a, String, str>>(&mut self, filetype: S) {
+        self.item.icon = Some(Icon::FileType(filetype.into_cow()));
     }
 
     /// Unsets the `icon`
@@ -300,8 +299,8 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets the `uid` to the given value
-    pub fn set_uid<S: IntoMaybeOwned<'a>>(&mut self, uid: S) {
-        self.item.uid = Some(uid.into_maybe_owned());
+    pub fn set_uid<S: IntoCow<'a, String, str>>(&mut self, uid: S) {
+        self.item.uid = Some(uid.into_cow());
     }
 
     /// Unsets the `uid`
@@ -310,8 +309,8 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets the `arg` to the given value
-    pub fn set_arg<S: IntoMaybeOwned<'a>>(&mut self, arg: S) {
-        self.item.arg = Some(arg.into_maybe_owned());
+    pub fn set_arg<S: IntoCow<'a, String, str>>(&mut self, arg: S) {
+        self.item.arg = Some(arg.into_cow());
     }
 
     /// Unsets the `arg`
@@ -332,8 +331,8 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `autocomplete` to the given value
-    pub fn set_autocomplete<S: IntoMaybeOwned<'a>>(&mut self, autocomplete: S) {
-        self.item.autocomplete = Some(autocomplete.into_maybe_owned());
+    pub fn set_autocomplete<S: IntoCow<'a, String, str>>(&mut self, autocomplete: S) {
+        self.item.autocomplete = Some(autocomplete.into_cow());
     }
 
     /// Unsets `autocomplete`
@@ -342,8 +341,8 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `text_copy` to the given value
-    pub fn set_text_copy<S: IntoMaybeOwned<'a>>(&mut self, text: S) {
-        self.item.text_copy = Some(text.into_maybe_owned());
+    pub fn set_text_copy<S: IntoCow<'a, String, str>>(&mut self, text: S) {
+        self.item.text_copy = Some(text.into_cow());
     }
 
     /// Unsets `text_copy`
@@ -352,8 +351,8 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `text_large_type` to the given value
-    pub fn set_text_large_type<S: IntoMaybeOwned<'a>>(&mut self, text: S) {
-        self.item.text_large_type = Some(text.into_maybe_owned());
+    pub fn set_text_large_type<S: IntoCow<'a, String, str>>(&mut self, text: S) {
+        self.item.text_large_type = Some(text.into_cow());
     }
 
     /// Unsets `text_large_type`
@@ -382,11 +381,11 @@ pub enum Modifier {
 #[deriving(PartialEq,Eq,Clone)]
 pub enum Icon<'a> {
     /// Path to an image file on disk relative to the workflow directory
-    Path(str::MaybeOwned<'a>),
+    Path(CowString<'a>),
     /// Path to a file whose icon will be used
-    File(str::MaybeOwned<'a>),
+    File(CowString<'a>),
     /// UTI for a file type to use (e.g. public.folder)
-    FileType(str::MaybeOwned<'a>)
+    FileType(CowString<'a>)
 }
 
 /// Item types
@@ -600,7 +599,7 @@ impl<'a> Item<'a> {
     }
 }
 
-fn encode_entities<'a>(s: &'a str) -> str::MaybeOwned<'a> {
+fn encode_entities<'a>(s: &'a str) -> CowString<'a> {
     fn encode_entity(c: char) -> Option<&'static str> {
         Some(match c {
             '<' => "&lt;",
@@ -626,8 +625,8 @@ fn encode_entities<'a>(s: &'a str) -> str::MaybeOwned<'a> {
                 None => res.push(c)
             }
         }
-        str::Owned(res)
+        ::std::borrow::Cow::Owned(res)
     } else {
-        str::Slice(s)
+        ::std::borrow::Cow::Borrowed(s)
     }
 }
