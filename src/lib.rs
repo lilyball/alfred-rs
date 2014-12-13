@@ -609,9 +609,9 @@ fn encode_entities<'a>(s: &'a str) -> CowString<'a> {
             '\0'...'\x08' |
             '\x0B'...'\x0C' |
             '\x0E'...'\x1F' |
-            '\uFFFE' | '\uFFFF' => {
+            '\u{FFFE}' | '\u{FFFF}' => {
                 // these are all invalid characters in XML
-                "\uFFFD"
+                "\u{FFFD}"
             }
             _ => return None
         })
