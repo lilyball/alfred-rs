@@ -56,6 +56,7 @@
 #![feature(unsafe_destructor)]
 #![warn(missing_docs)]
 
+use std::borrow::IntoCow;
 use std::collections::HashMap;
 use std::io;
 use std::io::BufferedWriter;
@@ -63,7 +64,7 @@ use std::mem;
 use std::str::CowString;
 
 /// Representation of an `<item>`
-#[deriving(PartialEq,Eq,Clone)]
+#[derive(PartialEq,Eq,Clone)]
 pub struct Item<'a> {
     /// Title for the item
     pub title: CowString<'a>,
@@ -126,7 +127,7 @@ impl<'a> Item<'a> {
 }
 
 /// Helper for building `Item` values
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct ItemBuilder<'a> {
     item: Item<'a>
 }
@@ -363,7 +364,7 @@ impl<'a> ItemBuilder<'a> {
 
 /// Keyboard modifiers
 // As far as I can tell, Alfred doesn't support modifier combinations.
-#[deriving(Clone,Copy,Show,Hash,PartialEq,Eq)]
+#[derive(Clone,Copy,Show,Hash,PartialEq,Eq)]
 pub enum Modifier {
     /// Command key
     Command,
@@ -378,7 +379,7 @@ pub enum Modifier {
 }
 
 /// Item icons
-#[deriving(PartialEq,Eq,Clone)]
+#[derive(PartialEq,Eq,Clone)]
 pub enum Icon<'a> {
     /// Path to an image file on disk relative to the workflow directory
     Path(CowString<'a>),
@@ -389,7 +390,7 @@ pub enum Icon<'a> {
 }
 
 /// Item types
-#[deriving(PartialEq,Eq,Clone,Copy)]
+#[derive(PartialEq,Eq,Clone,Copy)]
 pub enum ItemType {
     /// Default type for an item
     Default,
