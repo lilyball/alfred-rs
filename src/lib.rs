@@ -61,7 +61,7 @@ use std::collections::HashMap;
 use std::io;
 use std::io::BufferedWriter;
 use std::mem;
-use std::str::CowString;
+use std::string::CowString;
 
 /// Representation of an `<item>`
 #[derive(PartialEq,Eq,Clone)]
