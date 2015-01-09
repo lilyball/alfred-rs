@@ -14,7 +14,13 @@ Rust library to help with creating [Alfred 2][alfred] [Workflows][].
 Add the following to your `Cargo.toml` file:
 
 ```toml
-[dependencies.alfred]
+[dependencies]
 
-git = "https://github.com/kballard/alfred-rs.git"
+alfred = "0.1"
 ```
+
+## Version History
+
+#### 0.1
+
+Compatibility with the Rust 1.0 Alpha release.
