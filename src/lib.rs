@@ -3,6 +3,7 @@
 //! # Example
 //!
 //! ```
+//! # #![allow(unstable)]
 //! extern crate alfred;
 //!
 //! use std::io;
@@ -55,6 +56,7 @@
 
 #![feature(unsafe_destructor)]
 #![warn(missing_docs)]
+#![allow(unstable)]
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
@@ -512,9 +514,9 @@ impl<'a> Item<'a> {
     ///
     /// `XMLWriter` should be used instead if at all possible, in order to
     /// write the XML header/footer and maintain proper error discipline.
-    pub fn write_xml(&self, w: &mut io::Writer, indent: uint) -> io::IoResult<()> {
-        fn write_indent(w: &mut io::Writer, indent: uint) -> io::IoResult<()> {
-            for _ in range(0, indent) {
+    pub fn write_xml(&self, w: &mut io::Writer, indent: u32) -> io::IoResult<()> {
+        fn write_indent(w: &mut io::Writer, indent: u32) -> io::IoResult<()> {
+            for _ in (0..indent) {
                 try!(w.write_str("    "));
             }
             Ok(())
