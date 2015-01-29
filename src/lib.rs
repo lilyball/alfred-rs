@@ -6,7 +6,7 @@
 //! # #![allow(unstable)]
 //! extern crate alfred;
 //!
-//! use std::io;
+//! use std::old_io as io;
 //!
 //! fn write_items() -> io::IoResult<()> {
 //!     let mut xmlw = try!(alfred::XMLWriter::new(io::stdout()));
@@ -60,8 +60,8 @@
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
-use std::io;
-use std::io::BufferedWriter;
+use std::old_io as io;
+use std::old_io::BufferedWriter;
 use std::mem;
 use std::string::CowString;
 
