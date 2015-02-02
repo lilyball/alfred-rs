@@ -3,7 +3,6 @@
 //! # Example
 //!
 //! ```
-//! # #![allow(unstable)]
 //! extern crate alfred;
 //!
 //! use std::old_io as io;
@@ -55,8 +54,8 @@
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
 #![feature(unsafe_destructor)]
+#![feature(core,hash,io)]
 #![warn(missing_docs)]
-#![allow(unstable)]
 
 use std::borrow::IntoCow;
 use std::collections::HashMap;
@@ -366,7 +365,7 @@ impl<'a> ItemBuilder<'a> {
 
 /// Keyboard modifiers
 // As far as I can tell, Alfred doesn't support modifier combinations.
-#[derive(Clone,Copy,Show,Hash,PartialEq,Eq)]
+#[derive(Clone,Copy,Debug,Hash,PartialEq,Eq)]
 pub enum Modifier {
     /// Command key
     Command,
