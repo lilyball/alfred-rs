@@ -57,22 +57,21 @@
 #![feature(old_io)]
 #![warn(missing_docs)]
 
-use std::borrow::IntoCow;
+use std::borrow::{Cow, IntoCow};
 use std::collections::HashMap;
 use std::old_io as io;
 use std::old_io::BufferedWriter;
 use std::mem;
-use std::string::CowString;
 
 /// Representation of an `<item>`
 #[derive(PartialEq,Eq,Clone)]
 pub struct Item<'a> {
     /// Title for the item
-    pub title: CowString<'a>,
+    pub title: Cow<'a, str>,
     /// Subtitle for the item
     ///
     /// The subtitle may differ based on the active modifier.
-    pub subtitle: HashMap<Option<Modifier>,CowString<'a>>,
+    pub subtitle: HashMap<Option<Modifier>,Cow<'a, str>>,
     /// Icon for the item
     pub icon: Option<Icon<'a>>,
 
@@ -81,10 +80,10 @@ pub struct Item<'a> {
     /// If given, must be unique among items, and is used for prioritizing
     /// feedback results based on usage. If blank, Alfred presents results in
     /// the order given and does not learn from them.
-    pub uid: Option<CowString<'a>>,
+    pub uid: Option<Cow<'a, str>>,
     /// The value that is passed to the next portion of the workflow when this
     /// item is selected
-    pub arg: Option<CowString<'a>>,
+    pub arg: Option<Cow<'a, str>>,
     /// What type of result this is
     pub type_: ItemType,
 
@@ -98,15 +97,15 @@ pub struct Item<'a> {
     /// This value is populated into the search field if the tab key is
     /// pressed. If `valid = false`, this value is populated if the item is
     /// actioned.
-    pub autocomplete: Option<CowString<'a>>,
+    pub autocomplete: Option<Cow<'a, str>>,
     /// What text the user gets when copying the result
     ///
     /// This value is copied if the user presses ⌘C.
-    pub text_copy: Option<CowString<'a>>,
+    pub text_copy: Option<Cow<'a, str>>,
     /// What text the user gets when displaying large type
     ///
     /// This value is displayed if the user presses ⌘L.
-    pub text_large_type: Option<CowString<'a>>,
+    pub text_large_type: Option<Cow<'a, str>>,
 }
 
 impl<'a> Item<'a> {
@@ -383,11 +382,11 @@ pub enum Modifier {
 #[derive(PartialEq,Eq,Clone)]
 pub enum Icon<'a> {
     /// Path to an image file on disk relative to the workflow directory
-    Path(CowString<'a>),
+    Path(Cow<'a, str>),
     /// Path to a file whose icon will be used
-    File(CowString<'a>),
+    File(Cow<'a, str>),
     /// UTI for a file type to use (e.g. public.folder)
-    FileType(CowString<'a>)
+    FileType(Cow<'a, str>)
 }
 
 /// Item types
@@ -601,7 +600,7 @@ impl<'a> Item<'a> {
     }
 }
 
-fn encode_entities<'a>(s: &'a str) -> CowString<'a> {
+fn encode_entities<'a>(s: &'a str) -> Cow<'a, str> {
     fn encode_entity(c: char) -> Option<&'static str> {
         Some(match c {
             '<' => "&lt;",
