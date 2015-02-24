@@ -54,7 +54,7 @@
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
 #![feature(unsafe_destructor)]
-#![feature(core,hash,io)]
+#![feature(old_io)]
 #![warn(missing_docs)]
 
 use std::borrow::IntoCow;
@@ -111,7 +111,7 @@ pub struct Item<'a> {
 
 impl<'a> Item<'a> {
     /// Returns a new `Item` with the given title
-    pub fn new<S: IntoCow<'a, String, str>>(title: S) -> Item<'a> {
+    pub fn new<S: IntoCow<'a, str>>(title: S) -> Item<'a> {
         Item {
             title: title.into_cow(),
             subtitle: HashMap::new(),
@@ -135,7 +135,7 @@ pub struct ItemBuilder<'a> {
 
 impl<'a> ItemBuilder<'a> {
     /// Returns a new `ItemBuilder` with the given title
-    pub fn new<S: IntoCow<'a, String, str>>(title: S) -> ItemBuilder<'a> {
+    pub fn new<S: IntoCow<'a, str>>(title: S) -> ItemBuilder<'a> {
         ItemBuilder {
             item: Item::new(title)
         }
@@ -149,7 +149,7 @@ impl<'a> ItemBuilder<'a> {
 
 impl<'a> ItemBuilder<'a> {
     /// Sets the `title` to the given value
-    pub fn title<S: IntoCow<'a, String, str>>(mut self, title: S) -> ItemBuilder<'a> {
+    pub fn title<S: IntoCow<'a, str>>(mut self, title: S) -> ItemBuilder<'a> {
         self.set_title(title);
         self
     }
@@ -158,7 +158,7 @@ impl<'a> ItemBuilder<'a> {
     ///
     /// This sets the default subtitle, used when no modifier is pressed,
     /// or when no subtitle is provided for the pressed modifier.
-    pub fn subtitle<S: IntoCow<'a, String, str>>(mut self, subtitle: S) -> ItemBuilder<'a> {
+    pub fn subtitle<S: IntoCow<'a, str>>(mut self, subtitle: S) -> ItemBuilder<'a> {
         self.set_subtitle(subtitle);
         self
     }
@@ -166,7 +166,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `subtitle` to the given value with the given modifier
     ///
     /// This sets the subtitle to use when the given modifier is pressed.
-    pub fn subtitle_mod<S: IntoCow<'a, String, str>>(mut self, modifier: Modifier, subtitle: S)
+    pub fn subtitle_mod<S: IntoCow<'a, str>>(mut self, modifier: Modifier, subtitle: S)
                                               -> ItemBuilder<'a> {
         self.set_subtitle_mod(modifier, subtitle);
         self
@@ -175,7 +175,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to an image file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn icon_path<S: IntoCow<'a, String, str>>(mut self, path: S) -> ItemBuilder<'a> {
+    pub fn icon_path<S: IntoCow<'a, str>>(mut self, path: S) -> ItemBuilder<'a> {
         self.set_icon_path(path);
         self
     }
@@ -183,7 +183,7 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to the icon for a given file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn icon_file<S: IntoCow<'a, String, str>>(mut self, path: S) -> ItemBuilder<'a> {
+    pub fn icon_file<S: IntoCow<'a, str>>(mut self, path: S) -> ItemBuilder<'a> {
         self.set_icon_file(path);
         self
     }
@@ -191,19 +191,19 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to the icon for a given file type
     ///
     /// The type is a UTI, such as "public.jpeg".
-    pub fn icon_filetype<S: IntoCow<'a, String, str>>(mut self, filetype: S) -> ItemBuilder<'a> {
+    pub fn icon_filetype<S: IntoCow<'a, str>>(mut self, filetype: S) -> ItemBuilder<'a> {
         self.set_icon_filetype(filetype);
         self
     }
 
     /// Sets the `uid` to the given value
-    pub fn uid<S: IntoCow<'a, String, str>>(mut self, uid: S) -> ItemBuilder<'a> {
+    pub fn uid<S: IntoCow<'a, str>>(mut self, uid: S) -> ItemBuilder<'a> {
         self.set_uid(uid);
         self
     }
 
     /// Sets the `arg` to the given value
-    pub fn arg<S: IntoCow<'a, String, str>>(mut self, arg: S) -> ItemBuilder<'a> {
+    pub fn arg<S: IntoCow<'a, str>>(mut self, arg: S) -> ItemBuilder<'a> {
         self.set_arg(arg);
         self
     }
@@ -221,19 +221,19 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `autocomplete` to the given value
-    pub fn autocomplete<S: IntoCow<'a, String, str>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
+    pub fn autocomplete<S: IntoCow<'a, str>>(mut self, autocomplete: S) -> ItemBuilder<'a> {
         self.set_autocomplete(autocomplete);
         self
     }
 
     /// Sets `text_copy` to the given value
-    pub fn text_copy<S: IntoCow<'a, String, str>>(mut self, text: S) -> ItemBuilder<'a> {
+    pub fn text_copy<S: IntoCow<'a, str>>(mut self, text: S) -> ItemBuilder<'a> {
         self.set_text_copy(text);
         self
     }
 
     /// Sets `text_large_type` to the given value
-    pub fn text_large_type<S: IntoCow<'a, String, str>>(mut self, text: S) -> ItemBuilder<'a> {
+    pub fn text_large_type<S: IntoCow<'a, str>>(mut self, text: S) -> ItemBuilder<'a> {
         self.set_text_large_type(text);
         self
     }
@@ -241,12 +241,12 @@ impl<'a> ItemBuilder<'a> {
 
 impl<'a> ItemBuilder<'a> {
     /// Sets the `title` to the given value
-    pub fn set_title<S: IntoCow<'a, String, str>>(&mut self, title: S) {
+    pub fn set_title<S: IntoCow<'a, str>>(&mut self, title: S) {
         self.item.title = title.into_cow();
     }
 
     /// Sets the default `subtitle` to the given value
-    pub fn set_subtitle<S: IntoCow<'a, String, str>>(&mut self, subtitle: S) {
+    pub fn set_subtitle<S: IntoCow<'a, str>>(&mut self, subtitle: S) {
         self.item.subtitle.insert(None, subtitle.into_cow());
     }
 
@@ -256,7 +256,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets the `subtitle` to the given value for the given modifier
-    pub fn set_subtitle_mod<S: IntoCow<'a, String, str>>(&mut self, modifier: Modifier, subtitle: S) {
+    pub fn set_subtitle_mod<S: IntoCow<'a, str>>(&mut self, modifier: Modifier, subtitle: S) {
         self.item.subtitle.insert(Some(modifier), subtitle.into_cow());
     }
 
@@ -277,21 +277,21 @@ impl<'a> ItemBuilder<'a> {
     /// Sets the `icon` to an image file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn set_icon_path<S: IntoCow<'a, String, str>>(&mut self, path: S) {
+    pub fn set_icon_path<S: IntoCow<'a, str>>(&mut self, path: S) {
         self.item.icon = Some(Icon::Path(path.into_cow()));
     }
 
     /// Sets the `icon` to the icon for a given file on disk
     ///
     /// The path is interpreted relative to the workflow directory.
-    pub fn set_icon_file<S: IntoCow<'a, String, str>>(&mut self, path: S) {
+    pub fn set_icon_file<S: IntoCow<'a, str>>(&mut self, path: S) {
         self.item.icon = Some(Icon::File(path.into_cow()));
     }
 
     /// Sets the `icon` to the icon for a given file type
     ///
     /// The type is a UTI, such as "public.jpeg".
-    pub fn set_icon_filetype<S: IntoCow<'a, String, str>>(&mut self, filetype: S) {
+    pub fn set_icon_filetype<S: IntoCow<'a, str>>(&mut self, filetype: S) {
         self.item.icon = Some(Icon::FileType(filetype.into_cow()));
     }
 
@@ -301,7 +301,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets the `uid` to the given value
-    pub fn set_uid<S: IntoCow<'a, String, str>>(&mut self, uid: S) {
+    pub fn set_uid<S: IntoCow<'a, str>>(&mut self, uid: S) {
         self.item.uid = Some(uid.into_cow());
     }
 
@@ -311,7 +311,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets the `arg` to the given value
-    pub fn set_arg<S: IntoCow<'a, String, str>>(&mut self, arg: S) {
+    pub fn set_arg<S: IntoCow<'a, str>>(&mut self, arg: S) {
         self.item.arg = Some(arg.into_cow());
     }
 
@@ -333,7 +333,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `autocomplete` to the given value
-    pub fn set_autocomplete<S: IntoCow<'a, String, str>>(&mut self, autocomplete: S) {
+    pub fn set_autocomplete<S: IntoCow<'a, str>>(&mut self, autocomplete: S) {
         self.item.autocomplete = Some(autocomplete.into_cow());
     }
 
@@ -343,7 +343,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `text_copy` to the given value
-    pub fn set_text_copy<S: IntoCow<'a, String, str>>(&mut self, text: S) {
+    pub fn set_text_copy<S: IntoCow<'a, str>>(&mut self, text: S) {
         self.item.text_copy = Some(text.into_cow());
     }
 
@@ -353,7 +353,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     /// Sets `text_large_type` to the given value
-    pub fn set_text_large_type<S: IntoCow<'a, String, str>>(&mut self, text: S) {
+    pub fn set_text_large_type<S: IntoCow<'a, str>>(&mut self, text: S) {
         self.item.text_large_type = Some(text.into_cow());
     }
 
@@ -414,18 +414,18 @@ pub enum ItemType {
 ///
 /// Any errors produced by writing the footer are silently ignored. The
 /// `close()` method can be used to return any such error.
-pub struct XMLWriter<'a, W: Writer + 'a> {
+pub struct XMLWriter<W: Writer> {
     // Option so close() can remove it
     // Otherwise this must alwyas be Some()
     w: Option<W>,
     last_err: Option<io::IoError>
 }
 
-impl<'a, W: Writer + 'a> XMLWriter<'a, W> {
+impl<W: Writer> XMLWriter<W> {
     /// Returns a new `XMLWriter` that writes to the given `Writer`
     ///
     /// The XML header is written immediately.
-    pub fn new(mut w: W) -> io::IoResult<XMLWriter<'a, W>> {
+    pub fn new(mut w: W) -> io::IoResult<XMLWriter<W>> {
         match w.write_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<items>\n") {
             Ok(()) => {
                 Ok(XMLWriter {
@@ -484,7 +484,7 @@ fn write_footer<'a, W: Writer + 'a>(w: &'a mut W) -> io::IoResult<()> {
 }
 
 #[unsafe_destructor]
-impl<'a, W: Writer + 'a> Drop for XMLWriter<'a, W> {
+impl<W: Writer> Drop for XMLWriter<W> {
     fn drop(&mut self) {
         if self.last_err.is_some() {
             return;
