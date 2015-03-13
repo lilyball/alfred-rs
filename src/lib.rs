@@ -525,10 +525,10 @@ impl<'a> Item<'a> {
         try!(write_indent(&mut w, indent));
         try!(w.write_str("<item"));
         if let Some(ref uid) = self.uid {
-            try!(write!(&mut w, r#" uid="{}""#, encode_entities(uid.as_slice())));
+            try!(write!(&mut w, r#" uid="{}""#, encode_entities(&uid)));
         }
         if let Some(ref arg) = self.arg {
-            try!(write!(&mut w, r#" arg="{}""#, encode_entities(arg.as_slice())));
+            try!(write!(&mut w, r#" arg="{}""#, encode_entities(&arg)));
         }
         match self.type_ {
             ItemType::Default => {}
@@ -543,12 +543,12 @@ impl<'a> Item<'a> {
             try!(w.write_str(r#" valid="no""#));
         }
         if let Some(ref auto) = self.autocomplete {
-            try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(auto.as_slice())));
+            try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(&auto)));
         }
         try!(w.write_str(">\n"));
 
         try!(write_indent(&mut w, indent+1));
-        try!(write!(&mut w, "<title>{}</title>\n", encode_entities(self.title.as_slice())));
+        try!(write!(&mut w, "<title>{}</title>\n", encode_entities(&self.title)));
 
         for (modifier, subtitle) in self.subtitle.iter() {
             try!(write_indent(&mut w, indent+1));
@@ -563,34 +563,33 @@ impl<'a> Item<'a> {
             } else {
                 try!(w.write_str("<subtitle>"));
             }
-            try!(write!(&mut w, "{}</subtitle>\n", encode_entities(subtitle.as_slice())));
+            try!(write!(&mut w, "{}</subtitle>\n", encode_entities(&subtitle)));
         }
 
         if let Some(ref icon) = self.icon {
             try!(write_indent(&mut w, indent+1));
             match *icon {
                 Icon::Path(ref s) => {
-                    try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(s.as_slice())));
+                    try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(&s)));
                 }
                 Icon::File(ref s) => {
                     try!(write!(&mut w, "<icon type=\"fileicon\">{}</icon>\n",
-                                    encode_entities(s.as_slice())));
+                                    encode_entities(&s)));
                 }
                 Icon::FileType(ref s) => {
                     try!(write!(&mut w, "<icon type=\"filetype\">{}</icon>\n",
-                                    encode_entities(s.as_slice())));
+                                    encode_entities(&s)));
                 }
             }
         }
 
         if let Some(ref text) = self.text_copy {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<text type=\"copy\">{}</text>\n", encode_entities(text.as_slice())));
+            try!(write!(&mut w, "<text type=\"copy\">{}</text>\n", encode_entities(&text)));
         }
         if let Some(ref text) = self.text_large_type {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<text type=\"largetype\">{}</text>\n",
-                        encode_entities(text.as_slice())));
+            try!(write!(&mut w, "<text type=\"largetype\">{}</text>\n", encode_entities(&text)));
         }
 
         try!(write_indent(&mut w, indent));
