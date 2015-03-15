@@ -16,10 +16,14 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "0.1.1"
+alfred = "0.2.0"
 ```
 
 ## Version History
+
+#### 0.2
+
+Switch from `std::old_io` to `std::io`.
 
 #### 0.1.1
 
