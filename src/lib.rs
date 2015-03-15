@@ -5,9 +5,9 @@
 //! ```
 //! extern crate alfred;
 //!
-//! use std::old_io as io;
+//! use std::io::{self, Write};
 //!
-//! fn write_items() -> io::IoResult<()> {
+//! fn write_items() -> io::Result<()> {
 //!     let mut xmlw = try!(alfred::XMLWriter::new(io::stdout()));
 //!
 //!     let item1 = alfred::Item::new("Item 1");
@@ -53,14 +53,13 @@
 // alfred_workflow_name = GitHub Quick Open
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
-#![feature(unsafe_destructor)]
-#![feature(old_io)]
+#![feature(unsafe_destructor,io)]
 #![warn(missing_docs)]
 
 use std::borrow::{Cow, IntoCow};
 use std::collections::HashMap;
-use std::old_io as io;
-use std::old_io::BufferedWriter;
+use std::io;
+use std::io::prelude::*;
 use std::mem;
 
 /// Representation of an `<item>`
@@ -409,23 +408,23 @@ pub enum ItemType {
 ///
 /// When the `XMLWriter` is first created, the XML header is immediately
 /// written. When the `XMLWriter` is dropped, the XML footer is written
-/// and the `Writer` is flushed.
+/// and the `Write` is flushed.
 ///
 /// Any errors produced by writing the footer are silently ignored. The
 /// `close()` method can be used to return any such error.
-pub struct XMLWriter<W: Writer> {
+pub struct XMLWriter<W: Write> {
     // Option so close() can remove it
     // Otherwise this must alwyas be Some()
     w: Option<W>,
-    last_err: Option<io::IoError>
+    last_err: Option<io::Error>
 }
 
-impl<W: Writer> XMLWriter<W> {
-    /// Returns a new `XMLWriter` that writes to the given `Writer`
+impl<W: Write> XMLWriter<W> {
+    /// Returns a new `XMLWriter` that writes to the given `Write`
     ///
     /// The XML header is written immediately.
-    pub fn new(mut w: W) -> io::IoResult<XMLWriter<W>> {
-        match w.write_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<items>\n") {
+    pub fn new(mut w: W) -> io::Result<XMLWriter<W>> {
+        match w.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<items>\n") {
             Ok(()) => {
                 Ok(XMLWriter {
                     w: Some(w),
@@ -436,13 +435,13 @@ impl<W: Writer> XMLWriter<W> {
         }
     }
 
-    /// Writes an `Item` to the underlying `Writer`
+    /// Writes an `Item` to the underlying `Write`
     ///
     /// If a previous write produced an error, any subsequent write will do
     /// nothing and return the same error. This is because the previous write
     /// may have partially completed, and attempting to write any more data
     /// will be unlikely to work properly.
-    pub fn write_item(&mut self, item: &Item) -> io::IoResult<()> {
+    pub fn write_item(&mut self, item: &Item) -> io::Result<()> {
         if let Some(ref err) = self.last_err {
             return Err(err.clone());
         }
@@ -463,10 +462,10 @@ impl<W: Writer> XMLWriter<W> {
     /// returned an error, `close()` will return the same error without
     /// attempting to write the XML footer.
     ///
-    /// When this method is used, the XML footer is written, but the `Writer`
+    /// When this method is used, the XML footer is written, but the `Write`
     /// is not flushed. When the `XMLWriter` is dropped without calling
-    /// `close()`, the `Writer` is flushed after the footer is written.
-    pub fn close(mut self) -> io::IoResult<W> {
+    /// `close()`, the `Write` is flushed after the footer is written.
+    pub fn close(mut self) -> io::Result<W> {
         let last_err = self.last_err.take();
         let mut w = self.w.take().unwrap();
         unsafe { mem::forget(self); }
@@ -478,12 +477,12 @@ impl<W: Writer> XMLWriter<W> {
     }
 }
 
-fn write_footer<'a, W: Writer + 'a>(w: &'a mut W) -> io::IoResult<()> {
-    w.write_str("</items>\n")
+fn write_footer<'a, W: Write + 'a>(w: &'a mut W) -> io::Result<()> {
+    w.write_all(b"</items>\n")
 }
 
 #[unsafe_destructor]
-impl<W: Writer> Drop for XMLWriter<W> {
+impl<W: Write> Drop for XMLWriter<W> {
     fn drop(&mut self) {
         if self.last_err.is_some() {
             return;
@@ -495,10 +494,10 @@ impl<W: Writer> Drop for XMLWriter<W> {
     }
 }
 
-/// Writes a complete XML document representing the `Item`s to the `Writer`
+/// Writes a complete XML document representing the `Item`s to the `Write`
 ///
-/// The `Writer` is flushed after the XML document is written.
-pub fn write_items<W: Writer>(w: W, items: &[Item]) -> io::IoResult<()> {
+/// The `Write` is flushed after the XML document is written.
+pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
     let mut xmlw = try!(XMLWriter::new(w));
     for item in items.iter() {
         try!(xmlw.write_item(item));
@@ -508,22 +507,22 @@ pub fn write_items<W: Writer>(w: W, items: &[Item]) -> io::IoResult<()> {
 }
 
 impl<'a> Item<'a> {
-    /// Writes the XML fragment representing the `Item` to the `Writer`
+    /// Writes the XML fragment representing the `Item` to the `Write`
     ///
     /// `XMLWriter` should be used instead if at all possible, in order to
     /// write the XML header/footer and maintain proper error discipline.
-    pub fn write_xml(&self, w: &mut io::Writer, indent: u32) -> io::IoResult<()> {
-        fn write_indent(w: &mut io::Writer, indent: u32) -> io::IoResult<()> {
+    pub fn write_xml(&self, w: &mut Write, indent: u32) -> io::Result<()> {
+        fn write_indent(w: &mut Write, indent: u32) -> io::Result<()> {
             for _ in (0..indent) {
-                try!(w.write_str("    "));
+                try!(w.write_all(b"    "));
             }
             Ok(())
         }
 
-        let mut w = BufferedWriter::with_capacity(512, w);
+        let mut w = io::BufWriter::with_capacity(512, w);
 
         try!(write_indent(&mut w, indent));
-        try!(w.write_str("<item"));
+        try!(w.write_all(b"<item"));
         if let Some(ref uid) = self.uid {
             try!(write!(&mut w, r#" uid="{}""#, encode_entities(&uid)));
         }
@@ -533,19 +532,19 @@ impl<'a> Item<'a> {
         match self.type_ {
             ItemType::Default => {}
             ItemType::File => {
-                try!(w.write_str(r#" type="file""#));
+                try!(w.write_all(br#" type="file""#));
             }
             ItemType::FileSkipCheck => {
-                try!(w.write_str(r#" type="file:skipcheck""#));
+                try!(w.write_all(br#" type="file:skipcheck""#));
             }
         }
         if !self.valid {
-            try!(w.write_str(r#" valid="no""#));
+            try!(w.write_all(br#" valid="no""#));
         }
         if let Some(ref auto) = self.autocomplete {
             try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(&auto)));
         }
-        try!(w.write_str(">\n"));
+        try!(w.write_all(b">\n"));
 
         try!(write_indent(&mut w, indent+1));
         try!(write!(&mut w, "<title>{}</title>\n", encode_entities(&self.title)));
@@ -561,7 +560,7 @@ impl<'a> Item<'a> {
                     Modifier::Fn => "fn"
                 }));
             } else {
-                try!(w.write_str("<subtitle>"));
+                try!(w.write_all(b"<subtitle>"));
             }
             try!(write!(&mut w, "{}</subtitle>\n", encode_entities(&subtitle)));
         }
@@ -593,7 +592,7 @@ impl<'a> Item<'a> {
         }
 
         try!(write_indent(&mut w, indent));
-        try!(w.write_str("</item>\n"));
+        try!(w.write_all(b"</item>\n"));
 
         w.flush()
     }
