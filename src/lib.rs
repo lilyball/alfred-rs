@@ -53,7 +53,7 @@
 // alfred_workflow_name = GitHub Quick Open
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
-#![feature(unsafe_destructor,io)]
+#![feature(unsafe_destructor)]
 #![warn(missing_docs)]
 
 use std::borrow::{Cow, IntoCow};
