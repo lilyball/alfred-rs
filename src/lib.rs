@@ -58,9 +58,12 @@
 
 use std::borrow::{Cow, IntoCow};
 use std::collections::HashMap;
+use std::error;
+use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::mem;
+use std::sync;
 
 /// Representation of an `<item>`
 #[derive(PartialEq,Eq,Clone)]
@@ -416,7 +419,62 @@ pub struct XMLWriter<W: Write> {
     // Option so close() can remove it
     // Otherwise this must alwyas be Some()
     w: Option<W>,
-    last_err: Option<io::Error>
+    last_err: Option<SavedError>
+}
+
+// FIXME: If io::Error gains Clone again, go back to just cloning it
+enum SavedError {
+    Os(i32),
+    Custom(SharedError)
+}
+
+#[derive(Clone)]
+struct SharedError {
+    error: sync::Arc<io::Error>
+}
+
+impl From<io::Error> for SavedError {
+    fn from(err: io::Error) -> SavedError {
+        if let Some(code) = err.raw_os_error() {
+            SavedError::Os(code)
+        } else {
+            SavedError::Custom(SharedError { error: sync::Arc::new(err) })
+        }
+    }
+}
+
+impl SavedError {
+    fn make_io_error(&self) -> io::Error {
+        match *self {
+            SavedError::Os(code) => io::Error::from_raw_os_error(code),
+            SavedError::Custom(ref err) => {
+                let shared_err: SharedError = err.clone();
+                io::Error::new(err.error.kind(), shared_err)
+            }
+        }
+    }
+}
+
+impl error::Error for SharedError {
+    fn description(&self) -> &str {
+        self.error.description()
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        Some(&*self.error)
+    }
+}
+
+impl fmt::Debug for SharedError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <io::Error as fmt::Debug>::fmt(&self.error, f)
+    }
+}
+
+impl fmt::Display for SharedError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <io::Error as fmt::Display>::fmt(&self.error, f)
+    }
 }
 
 impl<W: Write> XMLWriter<W> {
@@ -443,13 +501,18 @@ impl<W: Write> XMLWriter<W> {
     /// will be unlikely to work properly.
     pub fn write_item(&mut self, item: &Item) -> io::Result<()> {
         if let Some(ref err) = self.last_err {
-            return Err(err.clone());
+            return Err(err.make_io_error());
         }
         let result = item.write_xml(self.w.as_mut().unwrap(), 1);
-        if let Err(ref err) = result {
-            self.last_err = Some(err.clone());
+        match result {
+            Err(err) => {
+                let err: SavedError = err.into();
+                let io_err = err.make_io_error();
+                self.last_err = Some(err);
+                Err(io_err)
+            }
+            x@Ok(_) => x
         }
-        result
     }
 
     /// Consumes the `XMLWriter` and writes the XML footer
@@ -470,7 +533,7 @@ impl<W: Write> XMLWriter<W> {
         let mut w = self.w.take().unwrap();
         unsafe { mem::forget(self); }
         if let Some(err) = last_err {
-            return Err(err);
+            return Err(err.make_io_error());
         }
         try!(write_footer(&mut w));
         Ok(w)
@@ -624,8 +687,8 @@ fn encode_entities<'a>(s: &'a str) -> Cow<'a, str> {
                 None => res.push(c)
             }
         }
-        ::std::borrow::Cow::Owned(res)
+        Cow::Owned(res)
     } else {
-        ::std::borrow::Cow::Borrowed(s)
+        Cow::Borrowed(s)
     }
 }
