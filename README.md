@@ -16,10 +16,15 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "0.2.2"
+alfred = "0.3.0"
 ```
 
 ## Version History
+
+#### 0.3.0
+
+Switch from `IntoCow<'a, str>` to `Into<Cow<'a, str>>`.
+This is technically a breaking change, but it is unlikely to affect anyone.
 
 #### 0.2.2
 
