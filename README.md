@@ -16,10 +16,14 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "0.2.1"
+alfred = "0.2.2"
 ```
 
 ## Version History
+
+#### 0.2.2
+
+Compatibility with the latest Rust nightly.
 
 #### 0.2.1
 
