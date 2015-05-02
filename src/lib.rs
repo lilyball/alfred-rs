@@ -53,7 +53,6 @@
 // alfred_workflow_name = GitHub Quick Open
 // alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
 
-#![feature(unsafe_destructor)]
 #![warn(missing_docs)]
 
 use std::borrow::Cow;
@@ -544,7 +543,6 @@ fn write_footer<'a, W: Write + 'a>(w: &'a mut W) -> io::Result<()> {
     w.write_all(b"</items>\n")
 }
 
-#[unsafe_destructor]
 impl<W: Write> Drop for XMLWriter<W> {
     fn drop(&mut self) {
         if self.last_err.is_some() {
