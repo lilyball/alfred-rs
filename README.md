@@ -16,10 +16,14 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "0.3.0"
+alfred = "0.3.1"
 ```
 
 ## Version History
+
+#### 0.3.1
+
+Remove `#[unsafe_destructor]`, which no longer exists in the latest nightlies.
 
 #### 0.3.0
 
