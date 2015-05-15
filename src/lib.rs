@@ -530,7 +530,7 @@ impl<W: Write> XMLWriter<W> {
     pub fn close(mut self) -> io::Result<W> {
         let last_err = self.last_err.take();
         let mut w = self.w.take().unwrap();
-        unsafe { mem::forget(self); }
+        mem::forget(self);
         if let Some(err) = last_err {
             return Err(err.make_io_error());
         }
