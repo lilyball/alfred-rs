@@ -1,6 +1,7 @@
 # alfred-rs
 
 [![Build Status](https://travis-ci.org/kballard/alfred-rs.svg?branch=master)](https://travis-ci.org/kballard/alfred-rs)
+[![crates.io/crates/alfred](http://meritbadge.herokuapp.com/alfred)](https://crates.io/crates/alfred)
 
 Rust library to help with creating [Alfred 2][alfred] [Workflows][].
 
@@ -16,10 +17,14 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "0.3.1"
+alfred = "1.0.0"
 ```
 
 ## Version History
+
+#### 1.0.0
+
+Rust 1.0 is out!
 
 #### 0.3.1
 
