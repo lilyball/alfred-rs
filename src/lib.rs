@@ -574,7 +574,7 @@ impl<'a> Item<'a> {
     /// write the XML header/footer and maintain proper error discipline.
     pub fn write_xml(&self, w: &mut Write, indent: u32) -> io::Result<()> {
         fn write_indent(w: &mut Write, indent: u32) -> io::Result<()> {
-            for _ in (0..indent) {
+            for _ in 0..indent {
                 try!(w.write_all(b"    "));
             }
             Ok(())
