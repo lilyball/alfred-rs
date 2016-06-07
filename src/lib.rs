@@ -7,7 +7,9 @@
 
 //! Helpers for writing Alfred script filter output
 //!
-//! # Example
+//! # Examples
+//!
+//! ### XML output (Alfred 2)
 //!
 //! ```
 //! extern crate alfred;
@@ -44,6 +46,37 @@
 //!     }
 //! }
 //! ```
+//!
+//! ### JSON output (Alfred 3)
+//!
+//! ```
+//! extern crate alfred;
+//!
+//! use std::io::{self, Write};
+//!
+//! fn write_items() -> io::Result<()> {
+//!     alfred::json::write_items(io::stdout(), &[
+//!         alfred::Item::new("Item 1"),
+//!         alfred::ItemBuilder::new("Item 2")
+//!                             .subtitle("Subtitle")
+//!                             .into_item(),
+//!         alfred::ItemBuilder::new("Item 3")
+//!                             .arg("Argument")
+//!                             .subtitle("Subtitle")
+//!                             .icon_filetype("public.folder")
+//!                             .into_item()
+//!     ])
+//! }
+//!
+//! fn main() {
+//!     match write_items() {
+//!         Ok(()) => {},
+//!         Err(err) => {
+//!             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
+//!         }
+//!     }
+//! }
+//! ```
 
 // example environment for a script filter:
 //
@@ -62,6 +95,9 @@
 
 #![warn(missing_docs)]
 
+extern crate rustc_serialize;
+
+pub mod json;
 pub mod xml;
 
 use std::borrow::Cow;
