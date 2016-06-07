@@ -5,7 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Helpers for writing Alfred XML output
+//! Helpers for writing Alfred script filter output
 //!
 //! # Example
 //!
@@ -62,14 +62,12 @@
 
 #![warn(missing_docs)]
 
+pub mod xml;
+
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::error;
-use std::fmt;
-use std::io;
-use std::io::prelude::*;
-use std::mem;
-use std::sync;
+
+pub use self::xml::XMLWriter;
 
 /// Representation of an `<item>`
 #[derive(PartialEq,Eq,Clone)]
@@ -78,8 +76,8 @@ pub struct Item<'a> {
     pub title: Cow<'a, str>,
     /// Subtitle for the item
     ///
-    /// The subtitle may differ based on the active modifier.
-    pub subtitle: HashMap<Option<Modifier>,Cow<'a, str>>,
+    /// The subtitle may be overridden by modifiers.
+    pub subtitle: Option<Cow<'a, str>>,
     /// Icon for the item
     pub icon: Option<Icon<'a>>,
 
@@ -91,6 +89,8 @@ pub struct Item<'a> {
     pub uid: Option<Cow<'a, str>>,
     /// The value that is passed to the next portion of the workflow when this
     /// item is selected
+    ///
+    /// The arg may be overridden by modifiers.
     pub arg: Option<Cow<'a, str>>,
     /// What type of result this is
     pub type_: ItemType,
@@ -99,6 +99,8 @@ pub struct Item<'a> {
     ///
     /// When `false`, actioning the result will populate the search field with
     /// the `autocomplete` value instead.
+    ///
+    /// The validity may be overridden by modifiers.
     pub valid: bool,
     /// Autocomplete data for the item
     ///
@@ -114,6 +116,11 @@ pub struct Item<'a> {
     ///
     /// This value is displayed if the user presses ⌘L.
     pub text_large_type: Option<Cow<'a, str>>,
+    /// A URL to use for Quick Look
+    pub quicklook_url: Option<Cow<'a, str>>,
+
+    /// Optional overrides of subtitle, arg, and valid by modifiers.
+    pub modifiers: HashMap<Modifier, ModifierData<'a>>
 }
 
 impl<'a> Item<'a> {
@@ -121,7 +128,7 @@ impl<'a> Item<'a> {
     pub fn new<S: Into<Cow<'a, str>>>(title: S) -> Item<'a> {
         Item {
             title: title.into(),
-            subtitle: HashMap::new(),
+            subtitle: None,
             icon: None,
             uid: None,
             arg: None,
@@ -130,6 +137,8 @@ impl<'a> Item<'a> {
             autocomplete: None,
             text_copy: None,
             text_large_type: None,
+            quicklook_url: None,
+            modifiers: HashMap::new()
         }
     }
 }
@@ -215,6 +224,15 @@ impl<'a> ItemBuilder<'a> {
         self
     }
 
+    /// Sets the `arg` to the given value with the given modifier.
+    ///
+    /// This sets the arg to use when the given modifier is pressed.
+    pub fn arg_mod<S: Into<Cow<'a, str>>>(mut self, modifier: Modifier, arg: S)
+                                         -> ItemBuilder<'a> {
+        self.set_arg_mod(modifier, arg);
+        self
+    }
+
     /// Sets the `type` to the given value
     pub fn type_(mut self, type_: ItemType) -> ItemBuilder<'a> {
         self.set_type(type_);
@@ -224,6 +242,25 @@ impl<'a> ItemBuilder<'a> {
     /// Sets `valid` to the given value
     pub fn valid(mut self, valid: bool) -> ItemBuilder<'a> {
         self.set_valid(valid);
+        self
+    }
+
+    /// Sets `valid` to the given value with the given modifier
+    ///
+    /// This sets the validity to use when the given modifier is pressed.
+    pub fn valid_mod(mut self, modifier: Modifier, valid: bool) -> ItemBuilder<'a> {
+        self.set_valid_mod(modifier, valid);
+        self
+    }
+
+    /// Sets the subtitle, arg, and validity to use with the given modifier
+    pub fn modifier<S: Into<Cow<'a, str>>, S2: Into<Cow<'a, str>>>(mut self,
+                                                                   modifier: Modifier,
+                                                                   subtitle: Option<S>,
+                                                                   arg: Option<S2>,
+                                                                   valid: bool)
+                                                                  -> ItemBuilder<'a> {
+        self.set_modifier(modifier, subtitle, arg, valid);
         self
     }
 
@@ -244,6 +281,12 @@ impl<'a> ItemBuilder<'a> {
         self.set_text_large_type(text);
         self
     }
+
+    /// Sets `quicklook_url` to the given value
+    pub fn quicklook_url<S: Into<Cow<'a, str>>>(mut self, url: S) -> ItemBuilder<'a> {
+        self.set_quicklook_url(url);
+        self
+    }
 }
 
 impl<'a> ItemBuilder<'a> {
@@ -254,31 +297,40 @@ impl<'a> ItemBuilder<'a> {
 
     /// Sets the default `subtitle` to the given value
     pub fn set_subtitle<S: Into<Cow<'a, str>>>(&mut self, subtitle: S) {
-        self.item.subtitle.insert(None, subtitle.into());
+        self.item.subtitle = Some(subtitle.into());
     }
 
     /// Unsets the default `subtitle`
     pub fn unset_subtitle(&mut self) {
-        self.item.subtitle.remove(&None);
+        self.item.subtitle = None;
     }
 
     /// Sets the `subtitle` to the given value for the given modifier
     pub fn set_subtitle_mod<S: Into<Cow<'a, str>>>(&mut self, modifier: Modifier, subtitle: S) {
-        self.item.subtitle.insert(Some(modifier), subtitle.into());
+        self.data_for_modifier(modifier).subtitle = Some(subtitle.into());
     }
 
     /// Unsets the `subtitle` for the given modifier
     ///
     /// This unsets the subtitle that's used when the given modifier is pressed.
     pub fn unset_subtitle_mod(&mut self, modifier: Modifier) {
-        self.item.subtitle.remove(&Some(modifier));
+        use std::collections::hash_map::Entry;
+        if let Entry::Occupied(mut entry) = self.item.modifiers.entry(modifier) {
+            entry.get_mut().subtitle = None;
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+        }
     }
 
     /// Clears the `subtitle` for all modifiers
     ///
     /// This unsets both the default subtitle and the per-modifier subtitles.
     pub fn clear_subtitle(&mut self) {
-        self.item.subtitle.clear();
+        self.item.subtitle = None;
+        for &modifier in ALL_MODIFIERS {
+            self.unset_subtitle_mod(modifier);
+        }
     }
 
     /// Sets the `icon` to an image file on disk
@@ -327,6 +379,34 @@ impl<'a> ItemBuilder<'a> {
         self.item.arg = None;
     }
 
+    /// Sets the `arg` to the given value for the given modifier
+    pub fn set_arg_mod<S: Into<Cow<'a, str>>>(&mut self, modifier: Modifier, arg: S) {
+        self.data_for_modifier(modifier).arg = Some(arg.into());
+    }
+
+    /// Unsets the `arg` for the given modifier
+    ///
+    /// This unsets the arg that's used when the given modifier is pressed.
+    pub fn unset_arg_mod(&mut self, modifier: Modifier) {
+        use std::collections::hash_map::Entry;
+        if let Entry::Occupied(mut entry) = self.item.modifiers.entry(modifier) {
+            entry.get_mut().arg = None;
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+        }
+    }
+
+    /// Clears the `arg` for all modifiers
+    ///
+    /// This unsets both the default arg and the per-modifier args.
+    pub fn clear_arg(&mut self) {
+        self.item.arg = None;
+        for &modifier in ALL_MODIFIERS {
+            self.unset_arg_mod(modifier);
+        }
+    }
+
     /// Sets the `type` to the given value
     pub fn set_type(&mut self, type_: ItemType) {
         self.item.type_ = type_;
@@ -339,6 +419,34 @@ impl<'a> ItemBuilder<'a> {
         self.item.valid = valid;
     }
 
+    /// Sets `valid` to the given value for the given modifier
+    pub fn set_valid_mod(&mut self, modifier: Modifier, valid: bool) {
+        self.data_for_modifier(modifier).valid = Some(valid);
+    }
+
+    /// Unsets `valid` for the given modifier
+    ///
+    /// This unsets the validity that's used when the given modifier is pressed.
+    pub fn unset_valid_mod(&mut self, modifier: Modifier) {
+        use std::collections::hash_map::Entry;
+        if let Entry::Occupied(mut entry) = self.item.modifiers.entry(modifier) {
+            entry.get_mut().valid = None;
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+        }
+    }
+
+    /// Unsets `valid` for all modifiers
+    ///
+    /// This resets `valid` back to the default and clears all per-modifier validity.
+    pub fn clear_valid(&mut self) {
+        self.item.valid = true;
+        for &modifier in ALL_MODIFIERS {
+            self.unset_valid_mod(modifier);
+        }
+    }
+
     /// Sets `autocomplete` to the given value
     pub fn set_autocomplete<S: Into<Cow<'a, str>>>(&mut self, autocomplete: S) {
         self.item.autocomplete = Some(autocomplete.into());
@@ -347,6 +455,25 @@ impl<'a> ItemBuilder<'a> {
     /// Unsets `autocomplete`
     pub fn unset_autocomplete(&mut self) {
         self.item.autocomplete = None;
+    }
+
+    /// Sets subtitle, arg, and validity for the given modifier
+    pub fn set_modifier<S: Into<Cow<'a, str>>, S2: Into<Cow<'a, str>>>(&mut self,
+                                                                       modifier: Modifier,
+                                                                       subtitle: Option<S>,
+                                                                       arg: Option<S2>,
+                                                                       valid: bool) {
+        let data = ModifierData {
+            subtitle: subtitle.map(Into::into),
+            arg: arg.map(Into::into),
+            valid: Some(valid)
+        };
+        self.item.modifiers.insert(modifier, data);
+    }
+
+    /// Unsets subtitle, arg, and validity for the given modifier
+    pub fn unset_modifier(&mut self, modifier: Modifier) {
+        self.item.modifiers.remove(&modifier);
     }
 
     /// Sets `text_copy` to the given value
@@ -368,6 +495,20 @@ impl<'a> ItemBuilder<'a> {
     pub fn unset_text_large_type(&mut self) {
         self.item.text_large_type = None;
     }
+
+    /// Sets `quicklook_url` to the given value
+    pub fn set_quicklook_url<S: Into<Cow<'a, str>>>(&mut self, url: S) {
+        self.item.quicklook_url = Some(url.into());
+    }
+
+    /// Unsets `quicklook_url`
+    pub fn unset_quicklook_url(&mut self) {
+        self.item.quicklook_url = None;
+    }
+
+    fn data_for_modifier(&mut self, modifier: Modifier) -> &mut ModifierData<'a> {
+        self.item.modifiers.entry(modifier).or_insert(Default::default())
+    }
 }
 
 /// Keyboard modifiers
@@ -384,6 +525,26 @@ pub enum Modifier {
     Shift,
     /// Fn key
     Fn
+}
+
+const ALL_MODIFIERS: &'static [Modifier] = &[Modifier::Command, Modifier::Option,
+                                             Modifier::Control, Modifier::Shift, Modifier::Fn];
+
+/// Optional overrides of subtitle, arg, and valid for modifiers.
+#[derive(Clone,Debug,PartialEq,Eq,Default)]
+pub struct ModifierData<'a> {
+    /// The subtitle to use for the current modifier
+    pub subtitle: Option<Cow<'a, str>>,
+    /// The arg to use for the current modifier
+    pub arg: Option<Cow<'a, str>>,
+    /// The validity to use for the current modifier
+    pub valid: Option<bool>
+}
+
+impl<'a> ModifierData<'a> {
+    fn is_empty(&self) -> bool {
+        self.subtitle.is_none() && self.arg.is_none() && self.valid.is_none()
+    }
 }
 
 /// Item icons
@@ -411,289 +572,4 @@ pub enum ItemType {
     ///
     /// Similar to `File` but skips the check to ensure the file exists.
     FileSkipCheck
-}
-
-/// Helper struct used to manage the XML serialization of `Item`s
-///
-/// When the `XMLWriter` is first created, the XML header is immediately
-/// written. When the `XMLWriter` is dropped, the XML footer is written
-/// and the `Write` is flushed.
-///
-/// Any errors produced by writing the footer are silently ignored. The
-/// `close()` method can be used to return any such error.
-pub struct XMLWriter<W: Write> {
-    // Option so close() can remove it
-    // Otherwise this must alwyas be Some()
-    w: Option<W>,
-    last_err: Option<SavedError>
-}
-
-// FIXME: If io::Error gains Clone again, go back to just cloning it
-enum SavedError {
-    Os(i32),
-    Custom(SharedError)
-}
-
-#[derive(Clone)]
-struct SharedError {
-    error: sync::Arc<io::Error>
-}
-
-impl From<io::Error> for SavedError {
-    fn from(err: io::Error) -> SavedError {
-        if let Some(code) = err.raw_os_error() {
-            SavedError::Os(code)
-        } else {
-            SavedError::Custom(SharedError { error: sync::Arc::new(err) })
-        }
-    }
-}
-
-impl SavedError {
-    fn make_io_error(&self) -> io::Error {
-        match *self {
-            SavedError::Os(code) => io::Error::from_raw_os_error(code),
-            SavedError::Custom(ref err) => {
-                let shared_err: SharedError = err.clone();
-                io::Error::new(err.error.kind(), shared_err)
-            }
-        }
-    }
-}
-
-impl error::Error for SharedError {
-    fn description(&self) -> &str {
-        self.error.description()
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        Some(&*self.error)
-    }
-}
-
-impl fmt::Debug for SharedError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <io::Error as fmt::Debug>::fmt(&self.error, f)
-    }
-}
-
-impl fmt::Display for SharedError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <io::Error as fmt::Display>::fmt(&self.error, f)
-    }
-}
-
-impl<W: Write> XMLWriter<W> {
-    /// Returns a new `XMLWriter` that writes to the given `Write`
-    ///
-    /// The XML header is written immediately.
-    pub fn new(mut w: W) -> io::Result<XMLWriter<W>> {
-        match w.write_all(b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<items>\n") {
-            Ok(()) => {
-                Ok(XMLWriter {
-                    w: Some(w),
-                    last_err: None
-                })
-            }
-            Err(err) => Err(err)
-        }
-    }
-
-    /// Writes an `Item` to the underlying `Write`
-    ///
-    /// If a previous write produced an error, any subsequent write will do
-    /// nothing and return the same error. This is because the previous write
-    /// may have partially completed, and attempting to write any more data
-    /// will be unlikely to work properly.
-    pub fn write_item(&mut self, item: &Item) -> io::Result<()> {
-        if let Some(ref err) = self.last_err {
-            return Err(err.make_io_error());
-        }
-        let result = item.write_xml(self.w.as_mut().unwrap(), 1);
-        match result {
-            Err(err) => {
-                let err: SavedError = err.into();
-                let io_err = err.make_io_error();
-                self.last_err = Some(err);
-                Err(io_err)
-            }
-            x@Ok(_) => x
-        }
-    }
-
-    /// Consumes the `XMLWriter` and writes the XML footer
-    ///
-    /// This method can be used to get any error resulting from writing the
-    /// footer. If this method is not used, the footer will be written when the
-    /// `XMLWriter` is dropped and any error will be silently ignored.
-    ///
-    /// As with `write_item()`, if a previous invocation of `write_item()`
-    /// returned an error, `close()` will return the same error without
-    /// attempting to write the XML footer.
-    ///
-    /// When this method is used, the XML footer is written, but the `Write`
-    /// is not flushed. When the `XMLWriter` is dropped without calling
-    /// `close()`, the `Write` is flushed after the footer is written.
-    pub fn close(mut self) -> io::Result<W> {
-        let last_err = self.last_err.take();
-        let mut w = self.w.take().unwrap();
-        mem::forget(self);
-        if let Some(err) = last_err {
-            return Err(err.make_io_error());
-        }
-        try!(write_footer(&mut w));
-        Ok(w)
-    }
-}
-
-fn write_footer<'a, W: Write + 'a>(w: &'a mut W) -> io::Result<()> {
-    w.write_all(b"</items>\n")
-}
-
-impl<W: Write> Drop for XMLWriter<W> {
-    fn drop(&mut self) {
-        if self.last_err.is_some() {
-            return;
-        }
-        let mut w = self.w.take().unwrap();
-        if write_footer(&mut w).is_ok() {
-            let _ = w.flush();
-        }
-    }
-}
-
-/// Writes a complete XML document representing the `Item`s to the `Write`
-///
-/// The `Write` is flushed after the XML document is written.
-pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
-    let mut xmlw = try!(XMLWriter::new(w));
-    for item in items.iter() {
-        try!(xmlw.write_item(item));
-    }
-    let mut w = try!(xmlw.close());
-    w.flush()
-}
-
-impl<'a> Item<'a> {
-    /// Writes the XML fragment representing the `Item` to the `Write`
-    ///
-    /// `XMLWriter` should be used instead if at all possible, in order to
-    /// write the XML header/footer and maintain proper error discipline.
-    pub fn write_xml(&self, w: &mut Write, indent: u32) -> io::Result<()> {
-        fn write_indent(w: &mut Write, indent: u32) -> io::Result<()> {
-            for _ in 0..indent {
-                try!(w.write_all(b"    "));
-            }
-            Ok(())
-        }
-
-        let mut w = io::BufWriter::with_capacity(512, w);
-
-        try!(write_indent(&mut w, indent));
-        try!(w.write_all(b"<item"));
-        if let Some(ref uid) = self.uid {
-            try!(write!(&mut w, r#" uid="{}""#, encode_entities(&uid)));
-        }
-        if let Some(ref arg) = self.arg {
-            try!(write!(&mut w, r#" arg="{}""#, encode_entities(&arg)));
-        }
-        match self.type_ {
-            ItemType::Default => {}
-            ItemType::File => {
-                try!(w.write_all(br#" type="file""#));
-            }
-            ItemType::FileSkipCheck => {
-                try!(w.write_all(br#" type="file:skipcheck""#));
-            }
-        }
-        if !self.valid {
-            try!(w.write_all(br#" valid="no""#));
-        }
-        if let Some(ref auto) = self.autocomplete {
-            try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(&auto)));
-        }
-        try!(w.write_all(b">\n"));
-
-        try!(write_indent(&mut w, indent+1));
-        try!(write!(&mut w, "<title>{}</title>\n", encode_entities(&self.title)));
-
-        for (modifier, subtitle) in self.subtitle.iter() {
-            try!(write_indent(&mut w, indent+1));
-            if let Some(modifier) = *modifier {
-                try!(write!(&mut w, r#"<subtitle mod="{}">"#, match modifier {
-                    Modifier::Command => "cmd",
-                    Modifier::Option => "alt",
-                    Modifier::Control => "ctrl",
-                    Modifier::Shift => "shift",
-                    Modifier::Fn => "fn"
-                }));
-            } else {
-                try!(w.write_all(b"<subtitle>"));
-            }
-            try!(write!(&mut w, "{}</subtitle>\n", encode_entities(&subtitle)));
-        }
-
-        if let Some(ref icon) = self.icon {
-            try!(write_indent(&mut w, indent+1));
-            match *icon {
-                Icon::Path(ref s) => {
-                    try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(&s)));
-                }
-                Icon::File(ref s) => {
-                    try!(write!(&mut w, "<icon type=\"fileicon\">{}</icon>\n",
-                                    encode_entities(&s)));
-                }
-                Icon::FileType(ref s) => {
-                    try!(write!(&mut w, "<icon type=\"filetype\">{}</icon>\n",
-                                    encode_entities(&s)));
-                }
-            }
-        }
-
-        if let Some(ref text) = self.text_copy {
-            try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<text type=\"copy\">{}</text>\n", encode_entities(&text)));
-        }
-        if let Some(ref text) = self.text_large_type {
-            try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<text type=\"largetype\">{}</text>\n", encode_entities(&text)));
-        }
-
-        try!(write_indent(&mut w, indent));
-        try!(w.write_all(b"</item>\n"));
-
-        w.flush()
-    }
-}
-
-fn encode_entities<'a>(s: &'a str) -> Cow<'a, str> {
-    fn encode_entity(c: char) -> Option<&'static str> {
-        Some(match c {
-            '<' => "&lt;",
-            '>' => "&gt;",
-            '"' => "&quot;",
-            '&' => "&amp;",
-            '\0'...'\x08' |
-            '\x0B'...'\x0C' |
-            '\x0E'...'\x1F' |
-            '\u{FFFE}' | '\u{FFFF}' => {
-                // these are all invalid characters in XML
-                "\u{FFFD}"
-            }
-            _ => return None
-        })
-    }
-
-    if s.chars().any(|c| encode_entity(c).is_some()) {
-        let mut res = String::with_capacity(s.len());
-        for c in s.chars() {
-            match encode_entity(c) {
-                Some(ent) => res.push_str(ent),
-                None => res.push(c)
-            }
-        }
-        Cow::Owned(res)
-    } else {
-        Cow::Borrowed(s)
-    }
 }
