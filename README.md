@@ -17,7 +17,7 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "1.0.1"
+alfred = "2.0"
 ```
 
 ## License
@@ -35,6 +35,14 @@ for inclusion in the work by you shall be dual licensed as above, without any
 additional terms or conditions.
 
 ## Version History
+
+#### 2.0.0
+
+Moved XML output into its own module `alfred::xml` and introduced a new module
+`alfred::json` for the new Alfred 3 JSON format.
+
+Updated `Item` and `ItemBuilder` with the extended modifier functionality and
+support for the QuickLook URL.
 
 #### 1.0.1
 
