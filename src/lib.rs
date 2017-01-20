@@ -102,6 +102,7 @@ pub mod xml;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::env;
 
 pub use self::xml::XMLWriter;
 
@@ -608,4 +609,12 @@ pub enum ItemType {
     ///
     /// Similar to `File` but skips the check to ensure the file exists.
     FileSkipCheck
+}
+
+/// Returns true if user has Alfred's workflow debug console open.
+pub fn is_debug() -> bool {
+    match env::var("alfred_debug") {
+        Ok(val) => val == "1",
+        Err(_) => false,
+    }
 }
