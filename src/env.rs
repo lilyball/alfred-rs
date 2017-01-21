@@ -43,6 +43,7 @@ pub fn theme_background_str() -> Option<String> {
 }
 
 /// The subtext mode in the Appearance preferences.
+#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 pub enum Subtext {
     /// Always show subtext.
     Always,
