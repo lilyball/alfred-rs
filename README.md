@@ -36,6 +36,11 @@ additional terms or conditions.
 
 ## Version History
 
+#### 2.0.1
+
+Add new module `alfred::env` for accessing the Alfred workflow environment
+variables.
+
 #### 2.0.0
 
 Moved XML output into its own module `alfred::xml` and introduced a new module
