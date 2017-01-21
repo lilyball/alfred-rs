@@ -8,7 +8,7 @@ Rust library to help with creating [Alfred 2][alfred] [Workflows][].
 [alfred]: http://www.alfredapp.com
 [Workflows]: http://support.alfredapp.com/workflows
 
-[API Documentation](http://www.rust-ci.org/kballard/alfred-rs/doc/alfred/)
+[API Documentation](http://docs.rs/alfred)
 
 ## Installation
 
