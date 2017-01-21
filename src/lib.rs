@@ -78,27 +78,13 @@
 //! }
 //! ```
 
-// example environment for a script filter:
-//
-// alfred_preferences = /Users/kevin/Dropbox (Personal)/Alfred.alfredpreferences
-// alfred_preferences_localhash = 24e980586e9906f9f08aa9febc3ef05f603e58ef
-// alfred_theme = alfred.theme.yosemite
-// alfred_theme_background = rgba(255,255,255,0.98)
-// alfred_theme_subtext = 0
-// alfred_version = 2.5
-// alfred_version_build = 299
-// alfred_workflow_bundleid = com.tildesoft.alfred.workflow.github-quick-open
-// alfred_workflow_cache = /Users/kevin/Library/Caches/com.runningwithcrayons.Alfred-2/Workflow Data/com.tildesoft.alfred.workflow.github-quick-open
-// alfred_workflow_data = /Users/kevin/Library/Application Support/Alfred 2/Workflow Data/com.tildesoft.alfred.workflow.github-quick-open
-// alfred_workflow_name = GitHub Quick Open
-// alfred_workflow_uid = user.workflow.9D443143-3DF7-4596-993E-DA198039EFAB
-
 #![warn(missing_docs)]
 
 extern crate rustc_serialize;
 
 pub mod json;
 pub mod xml;
+pub mod env;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
