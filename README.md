@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/kballard/alfred-rs.svg?branch=master)](https://travis-ci.org/kballard/alfred-rs)
 [![crates.io/crates/alfred](http://meritbadge.herokuapp.com/alfred)](https://crates.io/crates/alfred)
 
-Rust library to help with creating [Alfred 2][alfred] [Workflows][].
+Rust library to help with creating [Alfred][alfred] [Workflows][].
 
 [alfred]: http://www.alfredapp.com
 [Workflows]: http://support.alfredapp.com/workflows
