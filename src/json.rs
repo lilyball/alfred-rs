@@ -134,3 +134,29 @@ impl<'a> ToJson for Icon<'a> {
         })
     }
 }
+
+#[test]
+fn test_to_json() {
+    let item1 = Item::new("Item 1");
+    assert_eq!(item1.to_json().unwrap(), json!({"title": "Item 1"}));
+    let item2 = ::ItemBuilder::new("Item 2")
+                               .subtitle("Subtitle")
+                               .into_item();
+    assert_eq!(item2.to_json().unwrap(),
+              json!({
+                  "title": "Item 2",
+                  "subtitle": "Subtitle"
+              }));
+    let item3 = ::ItemBuilder::new("Item 3")
+                               .arg("Argument")
+                               .subtitle("Subtitle")
+                               .icon_filetype("public.folder")
+                               .into_item();
+    assert_eq!(item3.to_json().unwrap(),
+               json!({
+                   "title": "Item 3",
+                   "subtitle": "Subtitle",
+                   "arg": "Argument",
+                   "icon": { "type": "filetype", "path": "public.folder" }
+               }));
+}
