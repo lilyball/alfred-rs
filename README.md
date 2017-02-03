@@ -17,7 +17,7 @@ Add the following to your `Cargo.toml` file:
 ```toml
 [dependencies]
 
-alfred = "2.0"
+alfred = "3.0"
 ```
 
 ## License
@@ -35,6 +35,10 @@ for inclusion in the work by you shall be dual licensed as above, without any
 additional terms or conditions.
 
 ## Version History
+
+#### 3.0
+
+Switch from `rustc-serialize` to `serde_json` for our JSON support.
 
 #### 2.0.1
 

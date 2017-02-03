@@ -34,8 +34,8 @@
 //! ```
 
 use ::{Item, ItemType, Modifier, Icon};
-use rustc_serialize::json::{Json, ToJson};
-use std::collections::BTreeMap;
+use serde_json as json;
+use serde_json::value::{Value, ToJson};
 use std::io;
 use std::io::prelude::*;
 
@@ -44,58 +44,61 @@ use std::io::prelude::*;
 /// The `Write` is flushed after the JSON document is written.
 pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
     let mut w = w;
-    let mut root = BTreeMap::new();
-    root.insert("items".to_string(), Json::Array(items.into_iter().map(ToJson::to_json).collect()));
-    try!(write!(&mut w, "{}", Json::Object(root)));
+    let mut root = json::Map::new();
+    // We know for a fact that our implementation of ToJson cannot return an error.
+    root.insert("items".to_string(), Value::Array(items.into_iter()
+                                                       .map(|x| x.to_json().unwrap())
+                                                       .collect()));
+    try!(write!(&mut w, "{}", Value::Object(root)));
     w.flush()
 }
 
 impl<'a> ToJson for Item<'a> {
-    fn to_json(&self) -> Json {
-        let mut d = BTreeMap::new();
-        d.insert("title".to_string(), self.title.to_json());
+    fn to_json(&self) -> json::error::Result<Value> {
+        let mut d = json::Map::new();
+        d.insert("title".to_string(), json!(self.title));
         if let Some(ref subtitle) = self.subtitle {
-            d.insert("subtitle".to_string(), subtitle.to_json());
+            d.insert("subtitle".to_string(), json!(subtitle));
         }
         if let Some(ref icon) = self.icon {
-            d.insert("icon".to_string(), icon.to_json());
+            d.insert("icon".to_string(), icon.to_json()?);
         }
         if let Some(ref uid) = self.uid {
-            d.insert("uid".to_string(), uid.to_json());
+            d.insert("uid".to_string(), json!(uid));
         }
         if let Some(ref arg) = self.arg {
-            d.insert("arg".to_string(), arg.to_json());
+            d.insert("arg".to_string(), json!(arg));
         }
         match self.type_ {
             ItemType::Default => {}
             ItemType::File => {
-                d.insert("type".to_string(), "file".to_json());
+                d.insert("type".to_string(), json!("file"));
             }
             ItemType::FileSkipCheck => {
-                d.insert("type".to_string(), "file:skipcheck".to_json());
+                d.insert("type".to_string(), json!("file:skipcheck"));
             }
         }
         if !self.valid {
-            d.insert("valid".to_string(), false.to_json());
+            d.insert("valid".to_string(), Value::Bool(false));
         }
         if let Some(ref autocomplete) = self.autocomplete {
-            d.insert("autocomplete".to_string(), autocomplete.to_json());
+            d.insert("autocomplete".to_string(), json!(autocomplete));
         }
         if self.text_copy.is_some() || self.text_large_type.is_some() {
-            let mut text = BTreeMap::new();
+            let mut text = json::Map::new();
             if let Some(ref text_copy) = self.text_copy {
-                text.insert("copy".to_string(), text_copy.to_json());
+                text.insert("copy".to_string(), json!(text_copy));
             }
             if let Some(ref text_large_type) = self.text_large_type {
-                text.insert("largetype".to_string(), text_large_type.to_json());
+                text.insert("largetype".to_string(), json!(text_large_type));
             }
-            d.insert("text".to_string(), text.to_json());
+            d.insert("text".to_string(), Value::Object(text));
         }
         if let Some(ref url) = self.quicklook_url {
-            d.insert("quicklookurl".to_string(), url.to_json());
+            d.insert("quicklookurl".to_string(), json!(url));
         }
         if !self.modifiers.is_empty() {
-            let mut mods = BTreeMap::new();
+            let mut mods = json::Map::new();
             for (modifier, data) in self.modifiers.iter() {
                 let key = match *modifier {
                     Modifier::Command => "cmd",
@@ -104,40 +107,30 @@ impl<'a> ToJson for Item<'a> {
                     Modifier::Shift => "shift",
                     Modifier::Fn => "fn"
                 }.to_string();
-                let mut mod_ = BTreeMap::new();
+                let mut mod_ = json::Map::new();
                 if let Some(ref subtitle) = data.subtitle {
-                    mod_.insert("subtitle".to_string(), subtitle.to_json());
+                    mod_.insert("subtitle".to_string(), json!(subtitle));
                 }
                 if let Some(ref arg) = data.arg {
-                    mod_.insert("arg".to_string(), arg.to_json());
+                    mod_.insert("arg".to_string(), json!(arg));
                 }
                 if let Some(valid) = data.valid {
-                    mod_.insert("valid".to_string(), valid.to_json());
+                    mod_.insert("valid".to_string(), json!(valid));
                 }
-                mods.insert(key, mod_.to_json());
+                mods.insert(key, Value::Object(mod_));
             }
-            d.insert("mods".to_string(), mods.to_json());
+            d.insert("mods".to_string(), Value::Object(mods));
         }
-        Json::Object(d)
+        Ok(Value::Object(d))
     }
 }
 
 impl<'a> ToJson for Icon<'a> {
-    fn to_json(&self) -> Json {
-        let mut d = BTreeMap::new();
-        match *self {
-            Icon::Path(ref s) => {
-                d.insert("path".to_string(), s.to_json());
-            }
-            Icon::File(ref s) => {
-                d.insert("type".to_string(), "fileicon".to_json());
-                d.insert("path".to_string(), s.to_json());
-            }
-            Icon::FileType(ref s) => {
-                d.insert("type".to_string(), "filetype".to_json());
-                d.insert("path".to_string(), s.to_json());
-            }
-        }
-        d.to_json()
+    fn to_json(&self) -> json::error::Result<Value> {
+        Ok(match *self {
+            Icon::Path(ref s) => json!({"path": s}),
+            Icon::File(ref s) => json!({"type": "fileicon", "path": s}),
+            Icon::FileType(ref s) => json!({"type": "filetype", "path": s})
+        })
     }
 }

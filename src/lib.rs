@@ -80,7 +80,8 @@
 
 #![warn(missing_docs)]
 
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_json;
 
 pub mod json;
 pub mod xml;
