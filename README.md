@@ -36,6 +36,10 @@ additional terms or conditions.
 
 ## Version History
 
+#### 3.0.1
+
+Update `serde_json` to 1.0.
+
 #### 3.0
 
 Switch from `rustc-serialize` to `serde_json` for our JSON support.

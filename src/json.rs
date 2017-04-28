@@ -35,7 +35,7 @@
 
 use ::{Item, ItemType, Modifier, Icon};
 use serde_json as json;
-use serde_json::value::{Value, ToJson};
+use serde_json::value::Value;
 use std::io;
 use std::io::prelude::*;
 
@@ -47,21 +47,21 @@ pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
     let mut root = json::Map::new();
     // We know for a fact that our implementation of ToJson cannot return an error.
     root.insert("items".to_string(), Value::Array(items.into_iter()
-                                                       .map(|x| x.to_json().unwrap())
+                                                       .map(|x| x.to_json())
                                                        .collect()));
     try!(write!(&mut w, "{}", Value::Object(root)));
     w.flush()
 }
 
-impl<'a> ToJson for Item<'a> {
-    fn to_json(&self) -> json::error::Result<Value> {
+impl<'a> Item<'a> {
+    fn to_json(&self) -> Value {
         let mut d = json::Map::new();
         d.insert("title".to_string(), json!(self.title));
         if let Some(ref subtitle) = self.subtitle {
             d.insert("subtitle".to_string(), json!(subtitle));
         }
         if let Some(ref icon) = self.icon {
-            d.insert("icon".to_string(), icon.to_json()?);
+            d.insert("icon".to_string(), icon.to_json());
         }
         if let Some(ref uid) = self.uid {
             d.insert("uid".to_string(), json!(uid));
@@ -121,28 +121,28 @@ impl<'a> ToJson for Item<'a> {
             }
             d.insert("mods".to_string(), Value::Object(mods));
         }
-        Ok(Value::Object(d))
+        Value::Object(d)
     }
 }
 
-impl<'a> ToJson for Icon<'a> {
-    fn to_json(&self) -> json::error::Result<Value> {
-        Ok(match *self {
+impl<'a> Icon<'a> {
+    fn to_json(&self) -> Value {
+        match *self {
             Icon::Path(ref s) => json!({"path": s}),
             Icon::File(ref s) => json!({"type": "fileicon", "path": s}),
             Icon::FileType(ref s) => json!({"type": "filetype", "path": s})
-        })
+        }
     }
 }
 
 #[test]
 fn test_to_json() {
     let item1 = Item::new("Item 1");
-    assert_eq!(item1.to_json().unwrap(), json!({"title": "Item 1"}));
+    assert_eq!(item1.to_json(), json!({"title": "Item 1"}));
     let item2 = ::ItemBuilder::new("Item 2")
                                .subtitle("Subtitle")
                                .into_item();
-    assert_eq!(item2.to_json().unwrap(),
+    assert_eq!(item2.to_json(),
               json!({
                   "title": "Item 2",
                   "subtitle": "Subtitle"
@@ -152,7 +152,7 @@ fn test_to_json() {
                                .subtitle("Subtitle")
                                .icon_filetype("public.folder")
                                .into_item();
-    assert_eq!(item3.to_json().unwrap(),
+    assert_eq!(item3.to_json(),
                json!({
                    "title": "Item 3",
                    "subtitle": "Subtitle",
