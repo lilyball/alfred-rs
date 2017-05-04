@@ -530,7 +530,7 @@ impl<'a> ItemBuilder<'a> {
     }
 
     fn data_for_modifier(&mut self, modifier: Modifier) -> &mut ModifierData<'a> {
-        self.item.modifiers.entry(modifier).or_insert(Default::default())
+        self.item.modifiers.entry(modifier).or_insert_with(Default::default)
     }
 }
 

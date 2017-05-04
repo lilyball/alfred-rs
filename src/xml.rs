@@ -181,7 +181,7 @@ impl<W: Write> XMLWriter<W> {
     }
 }
 
-fn write_footer<'a, W: Write + 'a>(w: &'a mut W) -> io::Result<()> {
+fn write_footer<W: Write>(w: &mut W) -> io::Result<()> {
     w.write_all(b"</items>\n")
 }
 
@@ -227,10 +227,10 @@ impl<'a> Item<'a> {
         try!(write_indent(&mut w, indent));
         try!(w.write_all(b"<item"));
         if let Some(ref uid) = self.uid {
-            try!(write!(&mut w, r#" uid="{}""#, encode_entities(&uid)));
+            try!(write!(&mut w, r#" uid="{}""#, encode_entities(uid)));
         }
         if let Some(ref arg) = self.arg {
-            try!(write!(&mut w, r#" arg="{}""#, encode_entities(&arg)));
+            try!(write!(&mut w, r#" arg="{}""#, encode_entities(arg)));
         }
         match self.type_ {
             ItemType::Default => {}
@@ -245,7 +245,7 @@ impl<'a> Item<'a> {
             try!(w.write_all(br#" valid="no""#));
         }
         if let Some(ref auto) = self.autocomplete {
-            try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(&auto)));
+            try!(write!(&mut w, r#" autocomplete="{}""#, encode_entities(auto)));
         }
         try!(w.write_all(b">\n"));
 
@@ -254,27 +254,27 @@ impl<'a> Item<'a> {
 
         if let Some(ref subtitle) = self.subtitle {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<subtitle>{}</subtitle>\n", encode_entities(&subtitle)));
+            try!(write!(&mut w, "<subtitle>{}</subtitle>\n", encode_entities(subtitle)));
         }
 
         if let Some(ref icon) = self.icon {
             try!(write_indent(&mut w, indent+1));
             match *icon {
                 Icon::Path(ref s) => {
-                    try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(&s)));
+                    try!(write!(&mut w, "<icon>{}</icon>\n", encode_entities(s)));
                 }
                 Icon::File(ref s) => {
                     try!(write!(&mut w, "<icon type=\"fileicon\">{}</icon>\n",
-                                    encode_entities(&s)));
+                                    encode_entities(s)));
                 }
                 Icon::FileType(ref s) => {
                     try!(write!(&mut w, "<icon type=\"filetype\">{}</icon>\n",
-                                    encode_entities(&s)));
+                                    encode_entities(s)));
                 }
             }
         }
 
-        for (modifier, data) in self.modifiers.iter() {
+        for (modifier, data) in &self.modifiers {
             try!(write_indent(&mut w, indent+1));
             try!(write!(&mut w, r#"<mod key="{}""#, match *modifier {
                 Modifier::Command => "cmd",
@@ -298,16 +298,16 @@ impl<'a> Item<'a> {
 
         if let Some(ref text) = self.text_copy {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<text type=\"copy\">{}</text>\n", encode_entities(&text)));
+            try!(write!(&mut w, "<text type=\"copy\">{}</text>\n", encode_entities(text)));
         }
         if let Some(ref text) = self.text_large_type {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<text type=\"largetype\">{}</text>\n", encode_entities(&text)));
+            try!(write!(&mut w, "<text type=\"largetype\">{}</text>\n", encode_entities(text)));
         }
 
         if let Some(ref url) = self.quicklook_url {
             try!(write_indent(&mut w, indent+1));
-            try!(write!(&mut w, "<quicklookurl>{}</quicklookurl>\n", encode_entities(&url)));
+            try!(write!(&mut w, "<quicklookurl>{}</quicklookurl>\n", encode_entities(url)));
         }
 
         try!(write_indent(&mut w, indent));
@@ -317,7 +317,7 @@ impl<'a> Item<'a> {
     }
 }
 
-fn encode_entities<'a>(s: &'a str) -> Cow<'a, str> {
+fn encode_entities(s: &str) -> Cow<str> {
     fn encode_entity(c: char) -> Option<&'static str> {
         Some(match c {
             '<' => "&lt;",

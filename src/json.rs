@@ -99,7 +99,7 @@ impl<'a> Item<'a> {
         }
         if !self.modifiers.is_empty() {
             let mut mods = json::Map::new();
-            for (modifier, data) in self.modifiers.iter() {
+            for (modifier, data) in &self.modifiers {
                 let key = match *modifier {
                     Modifier::Command => "cmd",
                     Modifier::Option => "alt",
