@@ -80,7 +80,7 @@
 
 #![warn(missing_docs)]
 
-#![doc(html_root_url = "https://docs.rs/alfred/3.0.1")]
+#![doc(html_root_url = "https://docs.rs/alfred/3.0.2")]
 
 #[macro_use]
 extern crate serde_json;

@@ -36,6 +36,10 @@ additional terms or conditions.
 
 ## Version History
 
+#### 3.0.2
+
+Update documentation links for crates.io.
+
 #### 3.0.1
 
 Update `serde_json` to 1.0.
