@@ -1,7 +1,7 @@
 [package]
 
 name = "alfred"
-version = "3.0.1"
+version = "3.0.1" # remember to update html_root_url in lib.rs
 authors = ["Kevin Ballard <kevin@sb.org>"]
 description = """
 A library for writing Alfred workflows.
@@ -9,7 +9,7 @@ A library for writing Alfred workflows.
 http://www.alfredapp.com
 """
 
-documentation = "http://www.rust-ci.org/kballard/alfred-rs/doc/alfred/"
+documentation = "https://docs.rs/alfred/"
 repository = "https://github.com/kballard/alfred-rs"
 
 readme = "README.md"
