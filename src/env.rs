@@ -42,6 +42,14 @@ pub fn theme_background_str() -> Option<String> {
     env::var("alfred_theme_background").ok()
 }
 
+/// Returns the color of the theme's selected item background.
+///
+/// Example output: `"rgba(255,255,255,0.98)"`
+// TODO: see `theme_background_str()`
+pub fn theme_selection_background_str() -> Option<String> {
+    env::var("alfred_theme_selection_background").ok()
+}
+
 /// The subtext mode in the Appearance preferences.
 #[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 pub enum Subtext {
@@ -88,6 +96,7 @@ pub fn workflow_bundle_id() -> Option<String> {
 }
 
 /// Returns the recommended location for volatile workflow data.
+/// Will only be populated if the workflow has a bundle identifier set.
 ///
 /// Example output: `"/Users/Crayons/Library/Caches/com.runningwithcrayons.Alfred-2/Workflow Data/com.alfredapp.david.googlesuggest"`
 pub fn workflow_cache() -> Option<PathBuf> {
@@ -95,6 +104,7 @@ pub fn workflow_cache() -> Option<PathBuf> {
 }
 
 /// Returns the recommended location for non-volatile workflow data.
+/// Will only be populated if the workflow has a bundle identifier set.
 ///
 /// Example output: `"/Users/Crayons/Library/Application Support/Alfred 2/Workflow Data/com.alfredapp.david.googlesuggest"`
 pub fn workflow_data() -> Option<PathBuf> {
@@ -113,6 +123,11 @@ pub fn workflow_name() -> Option<String> {
 /// Example output: `"user.workflow.B0AC54EC-601C-479A-9428-01F9FD732959"`
 pub fn workflow_uid() -> Option<String> {
     env::var("alfred_workflow_uid").ok()
+}
+
+/// Returns the version of the currently running workflow.
+pub fn workflow_version() -> Option<String> {
+    env::var("alfred_workflow_version").ok()
 }
 
 /// Returns `true` if the user has the debug panel open for the workflow.
