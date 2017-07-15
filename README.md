@@ -36,6 +36,10 @@ additional terms or conditions.
 
 ## Version History
 
+#### 3.0.3
+
+Add 2 more functions for reading workflow environment variables.
+
 #### 3.0.2
 
 Update documentation links for crates.io.
