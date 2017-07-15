@@ -96,6 +96,7 @@ pub fn workflow_bundle_id() -> Option<String> {
 }
 
 /// Returns the recommended location for volatile workflow data.
+/// Will only be populated if the workflow has a bundle identifier set.
 ///
 /// Example output: `"/Users/Crayons/Library/Caches/com.runningwithcrayons.Alfred-2/Workflow Data/com.alfredapp.david.googlesuggest"`
 pub fn workflow_cache() -> Option<PathBuf> {
@@ -103,6 +104,7 @@ pub fn workflow_cache() -> Option<PathBuf> {
 }
 
 /// Returns the recommended location for non-volatile workflow data.
+/// Will only be populated if the workflow has a bundle identifier set.
 ///
 /// Example output: `"/Users/Crayons/Library/Application Support/Alfred 2/Workflow Data/com.alfredapp.david.googlesuggest"`
 pub fn workflow_data() -> Option<PathBuf> {
