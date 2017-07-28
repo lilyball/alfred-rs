@@ -237,6 +237,48 @@ impl<'a> ItemBuilder<'a> {
         self
     }
 
+    /// Sets the `icon` to an image file on disk for the given modifier
+    ///
+    /// The path is interpreted relative to the workflow directory.
+    ///
+    /// This property is only used with JSON output. The legacy XML output does not include
+    /// per-modifier icons.
+    ///
+    /// This property is only used with Alfred 3.4.1 or later.
+    pub fn icon_path_mod<S: Into<Cow<'a, str>>>(mut self, modifier: Modifier, path: S)
+                                               -> ItemBuilder<'a> {
+        self.set_icon_path_mod(modifier, path);
+        self
+    }
+
+    /// Sets the `icon` to the icon for a given file on disk for the given modifier
+    ///
+    /// The path is interpreted relative to the workflow directory.
+    ///
+    /// This property is only used with JSON output. The legacy XML output does not include
+    /// per-modifier icons.
+    ///
+    /// This property is only used with Alfred 3.4.1 or later.
+    pub fn icon_file_mod<S: Into<Cow<'a, str>>>(mut self, modifier: Modifier, path: S)
+                                               -> ItemBuilder<'a> {
+        self.set_icon_file_mod(modifier, path);
+        self
+    }
+
+    /// Sets the `icon` to the icon for a given file type for the given modifier
+    ///
+    /// The type is a UTI, such as "public.jpeg".
+    ///
+    /// This property is only used with JSON output. The legacy XML output does not include
+    /// per-modifier icons.
+    ///
+    /// This property is only used with Alfred 3.4.1 or later.
+    pub fn icon_filetype_mod<S: Into<Cow<'a, str>>>(mut self, modifier: Modifier, filetype: S)
+                                                   -> ItemBuilder<'a> {
+        self.set_icon_filetype_mod(modifier, filetype);
+        self
+    }
+
     /// Sets the `uid` to the given value
     pub fn uid<S: Into<Cow<'a, str>>>(mut self, uid: S) -> ItemBuilder<'a> {
         self.set_uid(uid);
@@ -278,14 +320,15 @@ impl<'a> ItemBuilder<'a> {
         self
     }
 
-    /// Sets the subtitle, arg, and validity to use with the given modifier
+    /// Sets the subtitle, arg, validity, and icon to use with the given modifier
     pub fn modifier<S: Into<Cow<'a, str>>, S2: Into<Cow<'a, str>>>(mut self,
                                                                    modifier: Modifier,
                                                                    subtitle: Option<S>,
                                                                    arg: Option<S2>,
-                                                                   valid: bool)
+                                                                   valid: bool,
+                                                                   icon: Option<Icon<'a>>)
                                                                   -> ItemBuilder<'a> {
-        self.set_modifier(modifier, subtitle, arg, valid);
+        self.set_modifier(modifier, subtitle, arg, valid, icon);
         self
     }
 
@@ -382,6 +425,66 @@ impl<'a> ItemBuilder<'a> {
     /// Unsets the `icon`
     pub fn unset_icon(&mut self) {
         self.item.icon = None;
+    }
+
+    /// Sets `icon` to an image file on disk for the given modifier
+    ///
+    /// The path is interpreted relative to the workflow directory.
+    ///
+    /// This property is only used with JSON output. The legacy XML output does not include
+    /// per-modifier icons.
+    ///
+    /// This property is only used with Alfred 3.4.1 or later.
+    pub fn set_icon_path_mod<S: Into<Cow<'a, str>>>(&mut self, modifier: Modifier, path: S) {
+        self.data_for_modifier(modifier).icon = Some(Icon::Path(path.into()));
+    }
+
+    /// Sets `icon` to the icon for a given file on disk for the given modifier
+    ///
+    /// The path is interpreted relative to the workflow directory.
+    ///
+    /// This property is only used with JSON output. The legacy XML output does not include
+    /// per-modifier icons.
+    ///
+    /// This property is only used with Alfred 3.4.1 or later.
+    pub fn set_icon_file_mod<S: Into<Cow<'a, str>>>(&mut self, modifier: Modifier, path: S) {
+        self.data_for_modifier(modifier).icon = Some(Icon::File(path.into()));
+    }
+
+    /// Sets `icon` to the icon for a given file type for the given modifier
+    ///
+    /// The type is a UTI, such as "public.jpeg".
+    ///
+    /// This property is only used with JSON output. The legacy XML output does not include
+    /// per-modifier icons.
+    ///
+    /// This property is only used with Alfred 3.4.1 or later.
+    pub fn set_icon_filetype_mod<S: Into<Cow<'a, str>>>(&mut self, modifier: Modifier,
+                                                        filetype: S) {
+        self.data_for_modifier(modifier).icon = Some(Icon::FileType(filetype.into()));
+    }
+
+    /// Unsets `icon` for the given modifier
+    ///
+    /// This unsets the result icon that's used when the given modifier is pressed.
+    pub fn unset_icon_mod(&mut self, modifier: Modifier) {
+        use std::collections::hash_map::Entry;
+        if let Entry::Occupied(mut entry) = self.item.modifiers.entry(modifier) {
+            entry.get_mut().icon = None;
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+        }
+    }
+
+    /// Clears the `icon` for all modifiers
+    ///
+    /// This unsets both the default icon and the per-modifier icons.
+    pub fn clear_icon(&mut self) {
+        self.item.icon = None;
+        for &modifier in ALL_MODIFIERS {
+            self.unset_icon_mod(modifier);
+        }
     }
 
     /// Sets the `uid` to the given value
@@ -482,16 +585,18 @@ impl<'a> ItemBuilder<'a> {
         self.item.autocomplete = None;
     }
 
-    /// Sets subtitle, arg, and validity for the given modifier
+    /// Sets subtitle, arg, validity, and icon for the given modifier
     pub fn set_modifier<S: Into<Cow<'a, str>>, S2: Into<Cow<'a, str>>>(&mut self,
                                                                        modifier: Modifier,
                                                                        subtitle: Option<S>,
                                                                        arg: Option<S2>,
-                                                                       valid: bool) {
+                                                                       valid: bool,
+                                                                       icon: Option<Icon<'a>>) {
         let data = ModifierData {
             subtitle: subtitle.map(Into::into),
             arg: arg.map(Into::into),
-            valid: Some(valid)
+            valid: Some(valid),
+            icon: icon
         };
         self.item.modifiers.insert(modifier, data);
     }
@@ -563,7 +668,14 @@ pub struct ModifierData<'a> {
     /// The arg to use for the current modifier
     pub arg: Option<Cow<'a, str>>,
     /// The validity to use for the current modifier
-    pub valid: Option<bool>
+    pub valid: Option<bool>,
+    /// The result icon to use for the current modifier
+    ///
+    /// This icon is only supported when using JSON output. The legacy XML output format does not
+    /// support per-modifier icons.
+    ///
+    /// This icon is only used with Alfred 3.4.1 or later.
+    pub icon: Option<Icon<'a>>
 }
 
 impl<'a> ModifierData<'a> {

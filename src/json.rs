@@ -117,6 +117,9 @@ impl<'a> Item<'a> {
                 if let Some(valid) = data.valid {
                     mod_.insert("valid".to_string(), json!(valid));
                 }
+                if let Some(ref icon) = data.icon {
+                    mod_.insert("icon".to_string(), icon.to_json());
+                }
                 mods.insert(key, Value::Object(mod_));
             }
             d.insert("mods".to_string(), Value::Object(mods));
@@ -137,26 +140,58 @@ impl<'a> Icon<'a> {
 
 #[test]
 fn test_to_json() {
-    let item1 = Item::new("Item 1");
-    assert_eq!(item1.to_json(), json!({"title": "Item 1"}));
-    let item2 = ::ItemBuilder::new("Item 2")
-                               .subtitle("Subtitle")
-                               .into_item();
-    assert_eq!(item2.to_json(),
+    let item = Item::new("Item 1");
+    assert_eq!(item.to_json(), json!({"title": "Item 1"}));
+    let item = ::ItemBuilder::new("Item 2")
+                              .subtitle("Subtitle")
+                              .into_item();
+    assert_eq!(item.to_json(),
               json!({
                   "title": "Item 2",
                   "subtitle": "Subtitle"
               }));
-    let item3 = ::ItemBuilder::new("Item 3")
-                               .arg("Argument")
-                               .subtitle("Subtitle")
-                               .icon_filetype("public.folder")
-                               .into_item();
-    assert_eq!(item3.to_json(),
+    let item = ::ItemBuilder::new("Item 3")
+                              .arg("Argument")
+                              .subtitle("Subtitle")
+                              .icon_filetype("public.folder")
+                              .into_item();
+    assert_eq!(item.to_json(),
                json!({
                    "title": "Item 3",
                    "subtitle": "Subtitle",
                    "arg": "Argument",
                    "icon": { "type": "filetype", "path": "public.folder" }
+               }));
+    let item = ::ItemBuilder::new("Item 4")
+                              .arg("Argument")
+                              .subtitle("Subtitle")
+                              .arg_mod(Modifier::Option, "Alt Argument")
+                              .valid_mod(Modifier::Option, false)
+                              .icon_file_mod(Modifier::Option, "opt.png")
+                              .arg_mod(Modifier::Control, "Ctrl Argument")
+                              .subtitle_mod(Modifier::Control, "Ctrl Subtitle")
+                              .icon_path_mod(Modifier::Control, "ctrl.png")
+                              .arg_mod(Modifier::Shift, "Shift Argument")
+                              .into_item();
+    assert_eq!(item.to_json(),
+               json!({
+                   "title": "Item 4",
+                   "subtitle": "Subtitle",
+                   "arg": "Argument",
+                   "mods": {
+                       "alt": {
+                            "arg": "Alt Argument",
+                            "valid": false,
+                            "icon": { "type": "fileicon", "path": "opt.png" }
+                       },
+                       "ctrl": {
+                           "arg": "Ctrl Argument",
+                           "subtitle": "Ctrl Subtitle",
+                           "icon": { "path": "ctrl.png" }
+                       },
+                       "shift": {
+                           "arg": "Shift Argument"
+                       }
+                   }
                }));
 }
