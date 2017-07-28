@@ -40,6 +40,38 @@
 //! # }
 //! ```
 //!
+//! ### JSON output with variables (Alfred 3)
+//!
+//! ```
+//! # extern crate alfred;
+//! # use std::io::{self, Write};
+//! #
+//! # fn write_items() -> io::Result<()> {
+//! alfred::json::Builder::with_items(&[
+//!     alfred::Item::new("Item 1"),
+//!     alfred::ItemBuilder::new("Item 2")
+//!                         .subtitle("Subtitle")
+//!                         .into_item(),
+//!     alfred::ItemBuilder::new("Item 3")
+//!                         .arg("Argument")
+//!                         .subtitle("Subtitle")
+//!                         .icon_filetype("public.folder")
+//!                         .into_item()
+//! ]).variable("fruit", "banana")
+//!   .variable("vegetable", "carrot")
+//!   .write(io::stdout())
+//! # }
+//! #
+//! # fn main() {
+//! #     match write_items() {
+//! #         Ok(()) => {},
+//! #         Err(err) => {
+//! #             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
+//! #         }
+//! #     }
+//! # }
+//! ```
+//!
 //! ### XML output (Alfred 2)
 //!
 //! ```
