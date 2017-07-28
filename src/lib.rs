@@ -95,7 +95,7 @@ use std::collections::HashMap;
 pub use self::xml::XMLWriter;
 
 /// Representation of an `<item>`
-#[derive(PartialEq,Eq,Clone)]
+#[derive(Clone,Debug,PartialEq,Eq)]
 pub struct Item<'a> {
     /// Title for the item
     pub title: Cow<'a, str>,
@@ -169,7 +169,7 @@ impl<'a> Item<'a> {
 }
 
 /// Helper for building `Item` values
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct ItemBuilder<'a> {
     item: Item<'a>
 }
@@ -538,7 +538,7 @@ impl<'a> ItemBuilder<'a> {
 
 /// Keyboard modifiers
 // As far as I can tell, Alfred doesn't support modifier combinations.
-#[derive(Clone,Copy,Debug,Hash,PartialEq,Eq)]
+#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 pub enum Modifier {
     /// Command key
     Command,
@@ -573,7 +573,7 @@ impl<'a> ModifierData<'a> {
 }
 
 /// Item icons
-#[derive(PartialEq,Eq,Clone)]
+#[derive(Clone,Debug,PartialEq,Eq,Hash)]
 pub enum Icon<'a> {
     /// Path to an image file on disk relative to the workflow directory
     Path(Cow<'a, str>),
@@ -584,7 +584,7 @@ pub enum Icon<'a> {
 }
 
 /// Item types
-#[derive(PartialEq,Eq,Clone,Copy)]
+#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 pub enum ItemType {
     /// Default type for an item
     Default,
