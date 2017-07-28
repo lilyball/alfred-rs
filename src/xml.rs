@@ -1,5 +1,8 @@
 //! Helpers for writing Alfred script filter XML output (Alfred 2)
 //!
+//! Unless you specifically need Alfred 2 compatibility, you should use the `alfred::json` module
+//! instead.
+//!
 //! # Example
 //!
 //! ```

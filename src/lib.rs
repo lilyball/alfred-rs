@@ -9,6 +9,37 @@
 //!
 //! # Examples
 //!
+//! ### JSON output (Alfred 3)
+//!
+//! ```
+//! extern crate alfred;
+//!
+//! use std::io::{self, Write};
+//!
+//! fn write_items() -> io::Result<()> {
+//!     alfred::json::write_items(io::stdout(), &[
+//!         alfred::Item::new("Item 1"),
+//!         alfred::ItemBuilder::new("Item 2")
+//!                             .subtitle("Subtitle")
+//!                             .into_item(),
+//!         alfred::ItemBuilder::new("Item 3")
+//!                             .arg("Argument")
+//!                             .subtitle("Subtitle")
+//!                             .icon_filetype("public.folder")
+//!                             .into_item()
+//!     ])
+//! }
+//!
+//! fn main() {
+//!     match write_items() {
+//!         Ok(()) => {},
+//!         Err(err) => {
+//!             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
+//!         }
+//!     }
+//! }
+//! ```
+//!
 //! ### XML output (Alfred 2)
 //!
 //! ```
@@ -35,37 +66,6 @@
 //!
 //!     let mut stdout = try!(xmlw.close());
 //!     stdout.flush()
-//! }
-//!
-//! fn main() {
-//!     match write_items() {
-//!         Ok(()) => {},
-//!         Err(err) => {
-//!             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
-//!         }
-//!     }
-//! }
-//! ```
-//!
-//! ### JSON output (Alfred 3)
-//!
-//! ```
-//! extern crate alfred;
-//!
-//! use std::io::{self, Write};
-//!
-//! fn write_items() -> io::Result<()> {
-//!     alfred::json::write_items(io::stdout(), &[
-//!         alfred::Item::new("Item 1"),
-//!         alfred::ItemBuilder::new("Item 2")
-//!                             .subtitle("Subtitle")
-//!                             .into_item(),
-//!         alfred::ItemBuilder::new("Item 3")
-//!                             .arg("Argument")
-//!                             .subtitle("Subtitle")
-//!                             .icon_filetype("public.folder")
-//!                             .into_item()
-//!     ])
 //! }
 //!
 //! fn main() {
