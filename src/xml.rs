@@ -51,7 +51,7 @@ use std::sync;
 
 use ::{Item, ItemType, Modifier, Icon};
 
-/// Helper struct used to manage the XML serialization of `Item`s
+/// Helper struct used to manage the XML serialization of `Item`s.
 ///
 /// When the `XMLWriter` is first created, the XML header is immediately
 /// written. When the `XMLWriter` is dropped, the XML footer is written
@@ -122,7 +122,7 @@ impl fmt::Display for SharedError {
 }
 
 impl<W: Write> XMLWriter<W> {
-    /// Returns a new `XMLWriter` that writes to the given `Write`
+    /// Returns a new `XMLWriter` that writes to the given `Write`.
     ///
     /// The XML header is written immediately.
     pub fn new(mut w: W) -> io::Result<XMLWriter<W>> {
@@ -137,7 +137,7 @@ impl<W: Write> XMLWriter<W> {
         }
     }
 
-    /// Writes an `Item` to the underlying `Write`
+    /// Writes an `Item` to the underlying `Write`.
     ///
     /// If a previous write produced an error, any subsequent write will do
     /// nothing and return the same error. This is because the previous write
@@ -159,7 +159,7 @@ impl<W: Write> XMLWriter<W> {
         }
     }
 
-    /// Consumes the `XMLWriter` and writes the XML footer
+    /// Consumes the `XMLWriter` and writes the XML footer.
     ///
     /// This method can be used to get any error resulting from writing the
     /// footer. If this method is not used, the footer will be written when the
@@ -200,7 +200,7 @@ impl<W: Write> Drop for XMLWriter<W> {
     }
 }
 
-/// Writes a complete XML document representing the `Item`s to the `Write`
+/// Writes a complete XML document representing the `Item`s to the `Write`.
 ///
 /// The `Write` is flushed after the XML document is written.
 pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
@@ -213,7 +213,7 @@ pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
 }
 
 impl<'a> Item<'a> {
-    /// Writes the XML fragment representing the `Item` to the `Write`
+    /// Writes the XML fragment representing the `Item` to the `Write`.
     ///
     /// `XMLWriter` should be used instead if at all possible, in order to
     /// write the XML header/footer and maintain proper error discipline.

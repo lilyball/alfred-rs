@@ -36,7 +36,7 @@ use serde_json::value::Value;
 use std::io;
 use std::io::prelude::*;
 
-/// Writes a complete JSON document representing the `Item`s to the `Write`
+/// Writes a complete JSON document representing the `Item`s to the `Write`.
 ///
 /// The `Write` is flushed after the JSON document is written.
 pub fn write_items<W: Write>(w: W, items: &[Item]) -> io::Result<()> {
