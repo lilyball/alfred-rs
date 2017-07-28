@@ -12,70 +12,70 @@
 //! ### JSON output (Alfred 3)
 //!
 //! ```
-//! extern crate alfred;
-//!
-//! use std::io::{self, Write};
-//!
-//! fn write_items() -> io::Result<()> {
-//!     alfred::json::write_items(io::stdout(), &[
-//!         alfred::Item::new("Item 1"),
-//!         alfred::ItemBuilder::new("Item 2")
-//!                             .subtitle("Subtitle")
-//!                             .into_item(),
-//!         alfred::ItemBuilder::new("Item 3")
-//!                             .arg("Argument")
-//!                             .subtitle("Subtitle")
-//!                             .icon_filetype("public.folder")
-//!                             .into_item()
-//!     ])
-//! }
-//!
-//! fn main() {
-//!     match write_items() {
-//!         Ok(()) => {},
-//!         Err(err) => {
-//!             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
-//!         }
-//!     }
-//! }
+//! # extern crate alfred;
+//! #
+//! # use std::io::{self, Write};
+//! #
+//! # fn write_items() -> io::Result<()> {
+//! alfred::json::write_items(io::stdout(), &[
+//!     alfred::Item::new("Item 1"),
+//!     alfred::ItemBuilder::new("Item 2")
+//!                         .subtitle("Subtitle")
+//!                         .into_item(),
+//!     alfred::ItemBuilder::new("Item 3")
+//!                         .arg("Argument")
+//!                         .subtitle("Subtitle")
+//!                         .icon_filetype("public.folder")
+//!                         .into_item()
+//! ])
+//! # }
+//! #
+//! # fn main() {
+//! #     match write_items() {
+//! #         Ok(()) => {},
+//! #         Err(err) => {
+//! #             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
+//! #         }
+//! #     }
+//! # }
 //! ```
 //!
 //! ### XML output (Alfred 2)
 //!
 //! ```
-//! extern crate alfred;
+//! # extern crate alfred;
+//! #
+//! # use std::io::{self, Write};
+//! #
+//! # fn write_items() -> io::Result<()> {
+//! let mut xmlw = try!(alfred::XMLWriter::new(io::stdout()));
 //!
-//! use std::io::{self, Write};
+//! let item1 = alfred::Item::new("Item 1");
+//! let item2 = alfred::ItemBuilder::new("Item 2")
+//!                                 .subtitle("Subtitle")
+//!                                 .into_item();
+//! let item3 = alfred::ItemBuilder::new("Item 3")
+//!                                 .arg("Argument")
+//!                                 .subtitle("Subtitle")
+//!                                 .icon_filetype("public.folder")
+//!                                 .into_item();
 //!
-//! fn write_items() -> io::Result<()> {
-//!     let mut xmlw = try!(alfred::XMLWriter::new(io::stdout()));
+//! try!(xmlw.write_item(&item1));
+//! try!(xmlw.write_item(&item2));
+//! try!(xmlw.write_item(&item3));
 //!
-//!     let item1 = alfred::Item::new("Item 1");
-//!     let item2 = alfred::ItemBuilder::new("Item 2")
-//!                                     .subtitle("Subtitle")
-//!                                     .into_item();
-//!     let item3 = alfred::ItemBuilder::new("Item 3")
-//!                                     .arg("Argument")
-//!                                     .subtitle("Subtitle")
-//!                                     .icon_filetype("public.folder")
-//!                                     .into_item();
-//!
-//!     try!(xmlw.write_item(&item1));
-//!     try!(xmlw.write_item(&item2));
-//!     try!(xmlw.write_item(&item3));
-//!
-//!     let mut stdout = try!(xmlw.close());
-//!     stdout.flush()
-//! }
-//!
-//! fn main() {
-//!     match write_items() {
-//!         Ok(()) => {},
-//!         Err(err) => {
-//!             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
-//!         }
-//!     }
-//! }
+//! let mut stdout = try!(xmlw.close());
+//! stdout.flush()
+//! # }
+//! #
+//! # fn main() {
+//! #     match write_items() {
+//! #         Ok(()) => {},
+//! #         Err(err) => {
+//! #             let _ = writeln!(&mut io::stderr(), "Error writing items: {}", err);
+//! #         }
+//! #     }
+//! # }
 //! ```
 
 #![warn(missing_docs)]
