@@ -795,7 +795,10 @@ impl<'a> ModifierData<'a> {
     }
 
     fn is_empty(&self) -> bool {
-        self.subtitle.is_none() && self.arg.is_none() && self.valid.is_none()
+        self.subtitle.is_none()
+        && self.arg.is_none()
+        && self.valid.is_none()
+        && self.icon.is_none()
     }
 }
 
