@@ -64,7 +64,7 @@
 //! # }
 //! ```
 
-use ::{Item, ItemType, Modifier, Icon};
+use ::{Item, ItemType, Modifier, Icon, ModifierData};
 use serde_json as json;
 use serde_json::value::Value;
 use std::collections::HashMap;
@@ -214,20 +214,7 @@ impl<'a> Item<'a> {
                     Modifier::Shift => "shift",
                     Modifier::Fn => "fn"
                 }.to_string();
-                let mut mod_ = json::Map::new();
-                if let Some(ref subtitle) = data.subtitle {
-                    mod_.insert("subtitle".to_string(), json!(subtitle));
-                }
-                if let Some(ref arg) = data.arg {
-                    mod_.insert("arg".to_string(), json!(arg));
-                }
-                if let Some(valid) = data.valid {
-                    mod_.insert("valid".to_string(), json!(valid));
-                }
-                if let Some(ref icon) = data.icon {
-                    mod_.insert("icon".to_string(), icon.to_json());
-                }
-                mods.insert(key, Value::Object(mod_));
+                mods.insert(key, data.to_json());
             }
             d.insert("mods".to_string(), Value::Object(mods));
         }
@@ -236,7 +223,7 @@ impl<'a> Item<'a> {
             for (key, value) in &self.variables {
                 vars.insert(key.clone().into_owned(), json!(value.clone().into_owned()));
             }
-            d.insert("variables".to_owned(), Value::Object(vars));
+            d.insert("variables".to_string(), Value::Object(vars));
         }
         Value::Object(d)
     }
@@ -249,6 +236,32 @@ impl<'a> Icon<'a> {
             Icon::File(ref s) => json!({"type": "fileicon", "path": s}),
             Icon::FileType(ref s) => json!({"type": "filetype", "path": s})
         }
+    }
+}
+
+impl<'a> ModifierData<'a> {
+    fn to_json(&self) -> Value {
+        let mut mod_ = json::Map::new();
+        if let Some(ref subtitle) = self.subtitle {
+            mod_.insert("subtitle".to_string(), json!(subtitle));
+        }
+        if let Some(ref arg) = self.arg {
+            mod_.insert("arg".to_string(), json!(arg));
+        }
+        if let Some(valid) = self.valid {
+            mod_.insert("valid".to_string(), json!(valid));
+        }
+        if let Some(ref icon) = self.icon {
+            mod_.insert("icon".to_string(), icon.to_json());
+        }
+        if !self.variables.is_empty() {
+            let mut vars = json::Map::with_capacity(self.variables.len());
+            for (key, value) in &self.variables {
+                vars.insert(key.clone().into_owned(), json!(value.clone().into_owned()));
+            }
+            mod_.insert("variables".to_string(), Value::Object(vars));
+        }
+        Value::Object(mod_)
     }
 }
 
@@ -320,6 +333,26 @@ fn test_to_json() {
                    "variables": {
                        "fruit": "banana",
                        "vegetable": "carrot"
+                   }
+               }));
+    let item = ::ItemBuilder::new("Item 6")
+                             .subtitle("Subtitle")
+                             .variable("fruit", "banana")
+                             .variable_mod(Modifier::Option, "vegetable", "carrot")
+                             .into_item();
+    assert_eq!(item.to_json(),
+               json!({
+                   "title": "Item 6",
+                   "subtitle": "Subtitle",
+                   "mods": {
+                       "alt": {
+                           "variables": {
+                               "vegetable": "carrot"
+                           }
+                       }
+                   },
+                   "variables": {
+                       "fruit": "banana"
                    }
                }));
 }

@@ -422,6 +422,29 @@ impl<'a> ItemBuilder<'a> {
         self.set_variables(variables);
         self
     }
+
+    /// Inserts a key/value pair into the variables for the given modifier.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn variable_mod<K,V>(mut self, modifier: Modifier, key: K, value: V) -> ItemBuilder<'a>
+        where K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.set_variable_mod(modifier, key, value);
+        self
+    }
+
+    /// Sets the variables to `variables` for the given modifier.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn variables_mod<I,K,V>(mut self, modifier: Modifier, variables: I) -> ItemBuilder<'a>
+        where I: IntoIterator<Item=(K,V)>,
+              K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.set_variables_mod(modifier, variables);
+        self
+    }
 }
 
 impl<'a> ItemBuilder<'a> {
@@ -664,6 +687,7 @@ impl<'a> ItemBuilder<'a> {
             arg: arg.map(Into::into),
             valid: Some(valid),
             icon: icon,
+            variables: HashMap::new(),
             _priv: ()
         };
         self.item.modifiers.insert(modifier, data);
@@ -738,9 +762,72 @@ impl<'a> ItemBuilder<'a> {
 
     /// Removes all item variables.
     ///
+    /// This does not affect per-modifier variables.
+    ///
     /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
     pub fn unset_variables(&mut self) {
         self.item.variables.clear()
+    }
+
+    /// Inserts a key/value pair into the variables for the given modifier.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn set_variable_mod<K,V>(&mut self, modifier: Modifier, key: K, value: V)
+        where K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.data_for_modifier(modifier).variables.insert(key.into(), value.into());
+    }
+
+    /// Removes a key from the variables for the given modifier.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn unset_variable_mod<K: ?Sized>(&mut self, modifier: Modifier, key: &K)
+        where Cow<'a, str>: Borrow<K>,
+              K: Hash + Eq
+    {
+        use std::collections::hash_map::Entry;
+        if let Entry::Occupied(mut entry) = self.item.modifiers.entry(modifier) {
+            entry.get_mut().variables.remove(key);
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+        }
+    }
+
+    /// Sets the variables to `variables` for the given modifier.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn set_variables_mod<I,K,V>(&mut self, modifier: Modifier, variables: I)
+        where I: IntoIterator<Item=(K,V)>,
+              K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.data_for_modifier(modifier).variables =
+            HashMap::from_iter(variables.into_iter().map(|(k,v)| (k.into(), v.into())));
+    }
+
+    /// Removes all variables for the given modifier.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn unset_variables_mod(&mut self, modifier: Modifier) {
+        use std::collections::hash_map::Entry;
+        if let Entry::Occupied(mut entry) = self.item.modifiers.entry(modifier) {
+            entry.get_mut().variables.clear();
+            if entry.get().is_empty() {
+                entry.remove();
+            }
+        }
+    }
+
+    /// Removes all item variables and all per-modifier variables.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn clear_variables(&mut self) {
+        self.unset_variables();
+        for &modifier in ALL_MODIFIERS {
+            self.unset_variables_mod(modifier);
+        }
     }
 
     fn data_for_modifier(&mut self, modifier: Modifier) -> &mut ModifierData<'a> {
@@ -784,6 +871,12 @@ pub struct ModifierData<'a> {
     /// This icon is only used with Alfred 3.4.1 or later.
     pub icon: Option<Icon<'a>>,
 
+    /// Variables to pass out of the script filter if the item is selected in Alfred's results
+    /// using this modifier.
+    ///
+    /// This property is only used with JSON output and only affects Alfred 3.4.1 or later.
+    pub variables: HashMap<Cow<'a, str>, Cow<'a, str>>,
+
     /// Disallow struct literals for `ModifierData`.
     _priv: ()
 }
@@ -799,6 +892,7 @@ impl<'a> ModifierData<'a> {
         && self.arg.is_none()
         && self.valid.is_none()
         && self.icon.is_none()
+        && self.variables.is_empty()
     }
 }
 
