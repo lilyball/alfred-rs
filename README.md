@@ -36,6 +36,14 @@ additional terms or conditions.
 
 ## Version History
 
+#### 4.0.0
+
+* Add support for per-modifier icons.
+* Add support for outputting workflow variables.
+* Add support for outputting per-item workflow variables.
+* Add support for outputting per-modifier workflow variables.
+* Derive a few more traits on the types provided by this crate.
+
 #### 3.0.3
 
 Add 2 more functions for reading workflow environment variables.
