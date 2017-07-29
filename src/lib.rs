@@ -177,7 +177,10 @@ pub struct Item<'a> {
     pub quicklook_url: Option<Cow<'a, str>>,
 
     /// Optional overrides of subtitle, arg, and valid by modifiers.
-    pub modifiers: HashMap<Modifier, ModifierData<'a>>
+    pub modifiers: HashMap<Modifier, ModifierData<'a>>,
+
+    /// Disallow struct literals for `Item`.
+    _priv: ()
 }
 
 impl<'a> Item<'a> {
@@ -195,7 +198,8 @@ impl<'a> Item<'a> {
             text_copy: None,
             text_large_type: None,
             quicklook_url: None,
-            modifiers: HashMap::new()
+            modifiers: HashMap::new(),
+            _priv: ()
         }
     }
 }
@@ -628,7 +632,8 @@ impl<'a> ItemBuilder<'a> {
             subtitle: subtitle.map(Into::into),
             arg: arg.map(Into::into),
             valid: Some(valid),
-            icon: icon
+            icon: icon,
+            _priv: ()
         };
         self.item.modifiers.insert(modifier, data);
     }
@@ -707,10 +712,18 @@ pub struct ModifierData<'a> {
     /// support per-modifier icons.
     ///
     /// This icon is only used with Alfred 3.4.1 or later.
-    pub icon: Option<Icon<'a>>
+    pub icon: Option<Icon<'a>>,
+
+    /// Disallow struct literals for `ModifierData`.
+    _priv: ()
 }
 
 impl<'a> ModifierData<'a> {
+    /// Returns a new `ModifierData` where all fields are `None`.
+    pub fn new() -> ModifierData<'a> {
+        Default::default()
+    }
+
     fn is_empty(&self) -> bool {
         self.subtitle.is_none() && self.arg.is_none() && self.valid.is_none()
     }
