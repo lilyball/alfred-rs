@@ -204,7 +204,7 @@ impl<'a> Item<'a> {
             d.insert("quicklookurl".to_string(), json!(url));
         }
         if !self.modifiers.is_empty() {
-            let mut mods = json::Map::new();
+            let mut mods = json::Map::with_capacity(self.modifiers.len());
             for (modifier, data) in &self.modifiers {
                 let key = match *modifier {
                     Modifier::Command => "cmd",
@@ -229,6 +229,13 @@ impl<'a> Item<'a> {
                 mods.insert(key, Value::Object(mod_));
             }
             d.insert("mods".to_string(), Value::Object(mods));
+        }
+        if !self.variables.is_empty() {
+            let mut vars = json::Map::with_capacity(self.variables.len());
+            for (key, value) in &self.variables {
+                vars.insert(key.clone().into_owned(), json!(value.clone().into_owned()));
+            }
+            d.insert("variables".to_owned(), Value::Object(vars));
         }
         Value::Object(d)
     }
@@ -298,6 +305,20 @@ fn test_into_json() {
                        "shift": {
                            "arg": "Shift Argument"
                        }
+                   }
+               }));
+    let item = ::ItemBuilder::new("Item 5")
+                             .arg("Argument")
+                             .variable("fruit", "banana")
+                             .variable("vegetable", "carrot")
+                             .into_item();
+    assert_eq!(item.into_json(),
+               json!({
+                   "title": "Item 5",
+                   "arg": "Argument",
+                   "variables": {
+                       "fruit": "banana",
+                       "vegetable": "carrot"
                    }
                }));
 }

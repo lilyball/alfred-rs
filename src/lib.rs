@@ -121,8 +121,10 @@ pub mod json;
 pub mod xml;
 pub mod env;
 
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::collections::HashMap;
+use std::iter::FromIterator;
+use std::hash::Hash;
 
 pub use self::xml::XMLWriter;
 
@@ -179,6 +181,11 @@ pub struct Item<'a> {
     /// Optional overrides of subtitle, arg, and valid by modifiers.
     pub modifiers: HashMap<Modifier, ModifierData<'a>>,
 
+    /// Variables to pass out of the script filter if this item is selected in Alfred's results.
+    ///
+    /// This property is only used with JSON output and only affects Alfred 3.4.1 or later.
+    pub variables: HashMap<Cow<'a, str>, Cow<'a, str>>,
+
     /// Disallow struct literals for `Item`.
     _priv: ()
 }
@@ -199,6 +206,7 @@ impl<'a> Item<'a> {
             text_large_type: None,
             quicklook_url: None,
             modifiers: HashMap::new(),
+            variables: HashMap::new(),
             _priv: ()
         }
     }
@@ -389,6 +397,29 @@ impl<'a> ItemBuilder<'a> {
     /// Sets `quicklook_url` to the given value.
     pub fn quicklook_url<S: Into<Cow<'a, str>>>(mut self, url: S) -> ItemBuilder<'a> {
         self.set_quicklook_url(url);
+        self
+    }
+
+    /// Inserts a key/value pair into the item variables.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn variable<K,V>(mut self, key: K, value: V) -> ItemBuilder<'a>
+        where K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.set_variable(key, value);
+        self
+    }
+
+    /// Sets the item's variables to `variables`.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn variables<I,K,V>(mut self, variables: I) -> ItemBuilder<'a>
+        where I: IntoIterator<Item=(K,V)>,
+              K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.set_variables(variables);
         self
     }
 }
@@ -673,6 +704,45 @@ impl<'a> ItemBuilder<'a> {
         self.item.quicklook_url = None;
     }
 
+    /// Inserts a key/value pair into the item variables.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn set_variable<K,V>(&mut self, key: K, value: V)
+        where K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.item.variables.insert(key.into(), value.into());
+    }
+
+    /// Removes a key from the item variables.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn unset_variable<K: ?Sized>(&mut self, key: &K)
+        where Cow<'a, str>: Borrow<K>,
+              K: Hash + Eq
+    {
+        self.item.variables.remove(key);
+    }
+
+    /// Sets the item's variables to `variables`.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn set_variables<I,K,V>(&mut self, variables: I)
+        where I: IntoIterator<Item=(K,V)>,
+              K: Into<Cow<'a, str>>,
+              V: Into<Cow<'a, str>>
+    {
+        self.item.variables = HashMap::from_iter(variables.into_iter()
+                                                          .map(|(k,v)| (k.into(),v.into())));
+    }
+
+    /// Removes all item variables.
+    ///
+    /// Item variables are only used with JSON output and only affect Alfred 3.4.1 or later.
+    pub fn unset_variables(&mut self) {
+        self.item.variables.clear()
+    }
+
     fn data_for_modifier(&mut self, modifier: Modifier) -> &mut ModifierData<'a> {
         self.item.modifiers.entry(modifier).or_insert_with(Default::default)
     }
@@ -754,4 +824,21 @@ pub enum ItemType {
     ///
     /// Similar to `File` but skips the check to ensure the file exists.
     FileSkipCheck
+}
+
+#[test]
+fn test_variables() {
+    // Because we're using generics with the set/unset variables methods, let's make sure it
+    // actually works as expected with the types we want to support.
+    let mut builder = ItemBuilder::new("Name");
+    builder.set_variable("fruit", "banana");
+    builder.set_variable("vegetable".to_owned(), Cow::Borrowed("carrot"));
+    let item = builder.clone().into_item();
+    assert_eq!(item.variables.get("fruit").as_ref().map(|x| x.as_ref()), Some("banana"));
+    assert_eq!(item.variables.get("vegetable").as_ref().map(|x| x.as_ref()), Some("carrot"));
+    assert_eq!(item.variables.get("meat"), None);
+    builder.unset_variable("fruit");
+    builder.unset_variable("vegetable");
+    let item = builder.into_item();
+    assert_eq!(item.variables, HashMap::new());
 }
