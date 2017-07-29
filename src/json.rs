@@ -36,6 +36,7 @@
 //!
 //! ```
 //! # extern crate alfred;
+//! # use alfred::Modifier;
 //! # use std::io::{self, Write};
 //! #
 //! # fn write_items() -> io::Result<()> {
@@ -43,11 +44,14 @@
 //!     alfred::Item::new("Item 1"),
 //!     alfred::ItemBuilder::new("Item 2")
 //!                         .subtitle("Subtitle")
+//!                         .variable("fruit", "banana")
 //!                         .into_item(),
 //!     alfred::ItemBuilder::new("Item 3")
 //!                         .arg("Argument")
 //!                         .subtitle("Subtitle")
 //!                         .icon_filetype("public.folder")
+//!                         .arg_mod(Modifier::Option, "Alt Argument")
+//!                         .variable_mod(Modifier::Option, "vegetable", "carrot")
 //!                         .into_item()
 //! ]).variable("fruit", "banana")
 //!   .variable("vegetable", "carrot")
