@@ -112,7 +112,8 @@ impl<'a> Builder<'a> {
         w.flush()
     }
 
-    fn into_json(self) -> Value {
+    /// Serializes items into their JSON representation.
+    pub fn into_json(self) -> Value {
         let mut root = json::Map::new();
         // We know for a fact that our implementation of ToJson cannot return an error.
         root.insert("items".to_string(), Value::Array(self.items.into_iter()
