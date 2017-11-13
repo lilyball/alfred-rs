@@ -115,7 +115,6 @@ impl<'a> Builder<'a> {
     /// Serializes items into their JSON representation.
     pub fn into_json(self) -> Value {
         let mut root = json::Map::new();
-        // We know for a fact that our implementation of ToJson cannot return an error.
         root.insert("items".to_string(), Value::Array(self.items.into_iter()
                                                                 .map(|x| x.to_json())
                                                                 .collect()));
@@ -166,7 +165,8 @@ impl<'a> Builder<'a> {
 }
 
 impl<'a> Item<'a> {
-    fn to_json(&self) -> Value {
+    /// Serializes the `Item` into its JSON representation.
+    pub fn to_json(&self) -> Value {
         let mut d = json::Map::new();
         d.insert("title".to_string(), json!(self.title));
         if let Some(ref subtitle) = self.subtitle {
@@ -235,7 +235,8 @@ impl<'a> Item<'a> {
 }
 
 impl<'a> Icon<'a> {
-    fn to_json(&self) -> Value {
+    /// Serializes the `Icon` into its JSON representation.
+    pub fn to_json(&self) -> Value {
         match *self {
             Icon::Path(ref s) => json!({"path": s}),
             Icon::File(ref s) => json!({"type": "fileicon", "path": s}),
@@ -245,7 +246,8 @@ impl<'a> Icon<'a> {
 }
 
 impl<'a> ModifierData<'a> {
-    fn to_json(&self) -> Value {
+    /// Serializes the `ModifierData` into its JSON representation.
+    pub fn to_json(&self) -> Value {
         let mut mod_ = json::Map::new();
         if let Some(ref subtitle) = self.subtitle {
             mod_.insert("subtitle".to_string(), json!(subtitle));
