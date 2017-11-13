@@ -36,6 +36,11 @@ additional terms or conditions.
 
 ## Version History
 
+#### 4.0.1
+
+* Make `Builder.into_json` public.
+* Make `Item.to_json` public, along with `to_json` methods on its helper types.
+
 #### 4.0.0
 
 * Add support for per-modifier icons.
