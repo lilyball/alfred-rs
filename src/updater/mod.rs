@@ -236,7 +236,7 @@ where
     /// # }
     /// ```
     ///
-    /// # Panic
+    /// # Panics
     /// Method will panic if
     /// - `Updater` state cannot be read/written during instantiation, or
     /// - The workflow version cannot be parsed as semver compatible identifier.
@@ -256,6 +256,8 @@ where
     ///
     /// For example, by reading cargo or git info during compile time and using this method to
     /// assign the version to workflow.
+    ///
+    /// # Example
     ///
     /// ```rust
     /// # extern crate alfred;
@@ -277,7 +279,7 @@ where
     ///
     /// [Alfred's preferences window]: https://www.alfredapp.com/help/workflows/advanced/variables/
     ///
-    /// # Panic
+    /// # Panics
     /// The method will panic if:
     /// - the passed value `version` cannot be parsed as a semver compatible string the
     /// function will panic.
@@ -291,7 +293,8 @@ where
 
     /// Set the interval between checks for a newer release (in seconds)
     ///
-    /// Example: Set interval to be 7 days
+    /// # Example
+    /// Set interval to be 7 days
     ///
     /// ```rust
     /// # extern crate alfred;
@@ -310,7 +313,7 @@ where
     /// # }
     /// ```
     ///
-    /// # Panic
+    /// # Panics
     /// Method will panic if any file io error happens during saving the `Updater` data to disk.
     pub fn set_interval(&mut self, tick: i64) {
         self.set_update_interval(tick);
@@ -348,6 +351,45 @@ where
         } else {
             Ok(false)
         }
+    }
+
+    /// Check if it is time to ask remote server for latest updates.
+    ///
+    /// It returns `true` if it has been more than UPDATE_INTERVAL seconds since we last
+    /// checked with server (i.e. ran [`update_ready()`]), otherwise returns false.
+    ///
+    /// [`update_ready()`]: struct.Updater.html#method.update_ready
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate alfred;
+    /// # use alfred::Updater;
+    /// # use std::env;
+    /// # use std::thread;
+    /// # use std::time;
+    /// # fn ex_due_to_check() {
+    /// # env::set_var("alfred_workflow_uid", "abcdef");
+    /// # env::set_var("alfred_workflow_data", env::temp_dir());
+    /// # env::set_var("alfred_workflow_version", "0.0.0");
+    /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
+    ///
+    /// // Assuming it is has been UPDATE_INTERVAL seconds since last time we ran the
+    /// // `update_ready()`:
+    /// # updater.update_ready();
+    /// # updater.set_interval(1);
+    /// # thread::sleep(time::Duration::from_millis(1001));
+    /// assert_eq!(true, updater.due_to_check());
+    /// # }
+    ///
+    /// # fn main() {
+    /// #     ex_due_to_check();
+    /// # }
+    /// ```
+    ///
+    pub fn due_to_check(&self) -> bool {
+        Utc::now().signed_duration_since(self.last_check())
+            > Duration::seconds(self.update_interval())
     }
 
     /// Function to download and save the latest release and save into workflow's cache dir.
@@ -450,11 +492,6 @@ where
 
     fn set_update_interval(&mut self, t: i64) {
         self.state.update_interval = t;
-    }
-
-    fn due_to_check(&self) -> bool {
-        Utc::now().signed_duration_since(self.last_check())
-            > Duration::seconds(self.update_interval())
     }
 
     fn load(data_file: &PathBuf) -> UpdaterState {
