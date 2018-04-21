@@ -3,6 +3,10 @@ rust:
   - stable
   - beta
   - nightly
+cache: cargo
+script:
+  - cargo build --features ci
+  - cargo test --features ci -- --nocapture --test-threads=1
 matrix:
   allow_failures:
     - rust: nightly
