@@ -7,6 +7,13 @@
 
 //! Helpers for writing Alfred script filter output
 //!
+//! Additionally the crate provides a way of checking for and updating
+//! your workflows automatically (Alfred 3 and above only).
+//!
+//! See [`updater`] module documentation for details and examples.
+//!
+//! [`updater`]: updater/index.html
+//!
 //! # Examples
 //!
 //! ### JSON output (Alfred 3)
@@ -115,21 +122,41 @@
 //! ```
 
 #![warn(missing_docs)]
-
 #![doc(html_root_url = "https://docs.rs/alfred/4.0.1")]
 
 #[macro_use]
 extern crate serde_json;
 
-pub mod json;
-pub mod xml;
+#[cfg(test)]
+extern crate tempfile;
+
+#[cfg(feature = "updater")]
+extern crate chrono;
+#[cfg(test)]
+extern crate mockito;
+#[cfg(feature = "updater")]
+extern crate reqwest;
+#[cfg(feature = "updater")]
+extern crate semver;
+#[cfg(feature = "updater")]
+#[macro_use]
+extern crate serde_derive;
+#[cfg(feature = "updater")]
+extern crate time;
+
 pub mod env;
+pub mod json;
+#[cfg(feature = "updater")]
+pub mod updater;
+pub mod xml;
 
 use std::borrow::{Borrow, Cow};
 use std::collections::HashMap;
-use std::iter::FromIterator;
 use std::hash::Hash;
+use std::iter::FromIterator;
 
+#[cfg(feature = "updater")]
+pub use self::updater::Updater;
 pub use self::xml::XMLWriter;
 
 /// Representation of a script filter item.
