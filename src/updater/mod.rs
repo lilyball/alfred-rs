@@ -107,6 +107,7 @@
 //! See [`Updater::new()`] documentation if you are hosting your workflow on a service other than
 //! `github.com` for an example of how to do it.
 
+use self::releaser::str_to_io_err;
 use chrono::prelude::*;
 use env;
 use reqwest;
@@ -173,9 +174,9 @@ impl Updater<GithubReleaser> {
     /// ends in `alfred3workflow` or `alfredworkflow`.
     pub fn gh<S>(repo_name: S) -> Self
     where
-        S: Into<String> + AsRef<str>,
+        S: Into<String>,
     {
-        let releaser = Box::new(GithubReleaser::new(repo_name.as_ref()));
+        let releaser = Box::new(GithubReleaser::new(repo_name));
 
         Self::load_or_new(releaser)
     }
@@ -230,9 +231,9 @@ where
     /// - The workflow version cannot be parsed as semver compatible identifier.
     pub fn new<S>(repo_name: S) -> Updater<T>
     where
-        S: Into<String> + AsRef<str>,
+        S: Into<String>,
     {
-        let releaser = Box::new(Releaser::new(repo_name.as_ref()));
+        let releaser = Box::new(Releaser::new(repo_name));
         Self::load_or_new(releaser)
     }
 
@@ -418,7 +419,6 @@ where
     }
 }
 
-use self::releaser::str_to_io_err;
 impl<T> Updater<T>
 where
     T: Releaser,
@@ -593,6 +593,7 @@ mod tests {
     }
 
     #[cfg(not(feature = "ci"))]
+    #[ignore]
     #[test]
     fn it_talks_to_github() {
         setup_workflow_env_vars(true);

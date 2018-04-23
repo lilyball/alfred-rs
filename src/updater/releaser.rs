@@ -12,7 +12,7 @@ const GITHUB_LATEST_RELEASE_ENDPOINT: &str = "/releases/latest";
 #[cfg(test)]
 static MOCKITO_URL: &'static str = mockito::SERVER_URL;
 #[cfg(test)]
-pub const MOCK_RELEASER_REPO_NAME: &str = "Mock/Releaser";
+pub const MOCK_RELEASER_REPO_NAME: &str = "MockZnVja29mZg==/fd850fc2e63511e79f720023dfdf24ec";
 
 /// An interface for checking with remote servers to identify the latest release for an
 /// Alfred workflow.
@@ -175,29 +175,21 @@ pub fn str_to_io_err<S: AsRef<str>>(s: S) -> io::Error {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use mockito::mock;
-    use mockito::Matcher;
-    use mockito::Mock;
+    use mockito::{mock, Matcher, Mock};
 
     #[test]
-    fn test_get_latest_release() {
-        let releaser = GithubReleaser::new("spamwax/alfred-pinboard-rs");
+    fn it_tests_releaser() {
+        let _m = setup_mock_server(200);
+        let releaser = GithubReleaser::new(MOCK_RELEASER_REPO_NAME);
+
+        // Calling downloadable_url before checking for newer_than will return error
+        assert!(releaser.downloadable_url().is_err());
 
         assert!(
             releaser
                 .newer_than(&Version::from((0, 0, 0)))
                 .expect("couldn't do newer_than")
         );
-    }
-
-    #[test]
-    fn it_uses_mockito() {
-        let _m = setup_mock_server(200);
-        let releaser = GithubReleaser::new(MOCK_RELEASER_REPO_NAME);
-        // Calling downloadable_url before checking for newer_than will return error
-        assert!(releaser.downloadable_url().is_err());
-
-        releaser.newer_than(&Version::from((0, 0, 0))).is_ok();
 
         assert_eq!("http://127.0.0.1:1234/releases/download/v0.11.1/alfred-pinboard-rust-v0.11.1.alfredworkflow",
                    releaser.downloadable_url().unwrap());
