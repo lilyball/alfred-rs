@@ -266,14 +266,11 @@ where
     /// [Alfred's preferences window]: https://www.alfredapp.com/help/workflows/advanced/variables/
     ///
     /// # Panics
-    /// The method will panic if:
-    /// - the passed value `version` cannot be parsed as a semver compatible string.
-    /// - any file io error happens during saving the `Updater` data to disk.
+    /// The method will panic if the passed value `version` cannot be parsed as a semver compatible string.
     pub fn set_version<S: AsRef<str>>(&mut self, version: S) {
         self.state.current_version =
             Version::parse(version.as_ref()).expect("version should follow semver rules.");
         StdEnv::set_var("alfred_workflow_version", version.as_ref());
-        self.save().expect("cannot save updater data to file.");
     }
 
     /// Set the interval between checks for a newer release (in seconds)
