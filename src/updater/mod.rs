@@ -129,9 +129,6 @@ pub use self::releaser::Releaser;
 /// Default update interval duration 24 hr
 const UPDATE_INTERVAL: i64 = 24 * 60 * 60;
 
-/// Default timestamp for last time a check was done
-const EPOCH_TIME: &str = "1970-01-01T00:00:00Z";
-
 /// Struct to check for & download the latest release of workflow from a remote server.
 pub struct Updater<T>
 where
@@ -144,7 +141,7 @@ where
 #[derive(Debug, Serialize, Deserialize)]
 struct UpdaterState {
     current_version: Version,
-    last_check: Cell<DateTime<Utc>>,
+    last_check: Cell<Option<DateTime<Utc>>>,
     update_interval: i64,
 }
 
@@ -321,9 +318,8 @@ where
         // Thus we update last_check to now and just save the updater state without checking for
         // updates since we assume user just downloaded the workflow. This change will trigger the
         // check after UPDATE_INTERVAL seconds.
-        let epoch = EPOCH_TIME.parse::<DateTime<Utc>>().unwrap();
 
-        if self.last_check() == epoch {
+        if self.last_check().is_none() {
             self.set_last_check(Utc::now());
             self.save()?;
             Ok(false)
@@ -365,8 +361,9 @@ where
     /// ```
     ///
     pub fn due_to_check(&self) -> bool {
-        Utc::now().signed_duration_since(self.last_check())
-            > Duration::seconds(self.update_interval())
+        self.last_check().map_or(true, |dt| {
+            Utc::now().signed_duration_since(dt) > Duration::seconds(self.update_interval())
+        })
     }
 
     /// Function to download and save the latest release into workflow's cache dir.
@@ -431,17 +428,12 @@ where
                 releaser: r,
             }
         } else {
-            let last_check = Cell::new(
-                EPOCH_TIME
-                    .parse::<DateTime<Utc>>()
-                    .expect("couldn't create UTC epoch time"),
-            );
             let current_version = env::workflow_version()
                 .map(|s| Version::parse(&s).expect("version should follow semver rules"))
                 .unwrap_or_else(|| Version::from((0, 0, 0)));
             let state = UpdaterState {
                 current_version,
-                last_check,
+                last_check: Cell::new(None),
                 update_interval: UPDATE_INTERVAL,
             };
             let updater = Updater { state, releaser: r };
@@ -454,12 +446,12 @@ where
         &self.state.current_version
     }
 
-    fn last_check(&self) -> DateTime<Utc> {
+    fn last_check(&self) -> Option<DateTime<Utc>> {
         self.state.last_check.get()
     }
 
     fn set_last_check(&self, t: DateTime<Utc>) {
-        self.state.last_check.set(t);
+        self.state.last_check.set(Some(t));
     }
 
     fn update_interval(&self) -> i64 {
@@ -525,8 +517,6 @@ mod tests {
     use std::ffi::OsStr;
     #[cfg(not(feature = "ci"))]
     use std::fs::remove_file;
-    use std::thread;
-    use std::time;
     use tempfile::Builder;
     const VERSION_TEST: &str = "0.10.5";
 
@@ -566,9 +556,8 @@ mod tests {
             updater.update_ready().expect("couldn't check for update")
         );
 
-        // Next check will be due in 1 seconds
-        updater.set_interval(1);
-        thread::sleep(time::Duration::from_millis(1001));
+        // Next check will be immediate
+        updater.set_interval(0);
         let _m = setup_mock_server(400);
         updater.update_ready().unwrap();
     }
@@ -585,9 +574,8 @@ mod tests {
             updater.update_ready().expect("couldn't check for update")
         );
 
-        // Next check will be due in 1 seconds
-        updater.set_interval(1);
-        thread::sleep(time::Duration::from_millis(1001));
+        // Next check will be immediate
+        updater.set_interval(0);
 
         assert!(updater.update_ready().expect("couldn't check for update"));
     }
@@ -601,20 +589,15 @@ mod tests {
         let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
         assert_eq!(VERSION_TEST, format!("{}", updater.current_version()));
 
-        // New temp folder causes due_to_check to be true since last check is assumed to be in 1970
-        let seventies_called = EPOCH_TIME
-            .parse::<DateTime<Utc>>()
-            .expect("couldn't create UTC epoch time");
-        assert_eq!(seventies_called, updater.last_check());
+        assert!(updater.last_check().is_none());
         assert!(updater.due_to_check());
 
         // Calling update_ready on first run of workflow will return false since we assume workflow
         // was just downloaded.
         assert!(!updater.update_ready().expect("couldn't check for update"));
 
-        // Next check will be due in 1 seconds
-        updater.set_interval(1);
-        thread::sleep(time::Duration::from_millis(1001));
+        // Next check will be immediate
+        updater.set_interval(0);
 
         assert!(updater.due_to_check());
         // update should be ready since alfred-pinboard-rs
