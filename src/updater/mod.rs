@@ -520,24 +520,23 @@ mod tests {
     #[cfg(not(feature = "ci"))]
     #[test]
     fn it_loads_last_updater_state() {
-        let mut updater_state_fn = StdEnv::temp_dir();
+        setup_workflow_env_vars(true);
+        let updater_state_fn = Updater::<GithubReleaser>::build_data_fn().unwrap();
+        println!("updater_state_fn: {:#?}", updater_state_fn);
 
-        setup_workflow_env_vars(false);
-
-        updater_state_fn.push(
-            String::from("workflow.B0AC54EC-601C") + "-YouForgotToNameYourOwnWorkflow-updater.json",
-        );
         let _ = remove_file(&updater_state_fn);
         assert!(!updater_state_fn.exists());
 
         // Create a new Updater, and check if there is an update available
-        let updater: Updater<GithubReleaser> = Updater::new("spamwax/alfred-pinboard-rs");
+        let mut updater: Updater<GithubReleaser> = Updater::new("spamwax/alfred-pinboard-rs");
         assert_eq!(VERSION_TEST, format!("{}", updater.current_version()));
         assert!(!updater.update_ready().expect("couldn't check for update"));
+        updater.set_interval(-1);
 
         // Now creating another one, will load the updater from file
         assert!(updater_state_fn.exists());
-        let _updater: Updater<GithubReleaser> = Updater::new("spamwax/alfred-pinboard-rs");
+        let updater: Updater<GithubReleaser> = Updater::new("spamwax/alfred-pinboard-rs");
+        assert_eq!(-1, updater.update_interval())
     }
 
     #[test]
@@ -618,9 +617,8 @@ mod tests {
             updater.update_ready().expect("couldn't check for update")
         );
 
-        // Next check will be due in 1 seconds
-        updater.set_interval(1);
-        thread::sleep(time::Duration::from_millis(1001));
+        // Next check will be immediate
+        updater.set_interval(0);
         // Force current version to be really old.
         updater.set_version("0.0.1");
         assert!(updater.update_ready().expect("couldn't check for update"));
