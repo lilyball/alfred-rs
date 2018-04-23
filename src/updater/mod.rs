@@ -113,7 +113,7 @@ use env;
 use reqwest;
 use semver::Version;
 use serde_json;
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::env as StdEnv;
 use std::fs::{create_dir_all, File};
 use std::io::{BufReader, BufWriter};
@@ -144,7 +144,7 @@ where
 #[derive(Debug, Serialize, Deserialize)]
 struct UpdaterState {
     current_version: Version,
-    last_check: RefCell<DateTime<Utc>>,
+    last_check: Cell<DateTime<Utc>>,
     update_interval: i64,
 }
 
@@ -431,7 +431,7 @@ where
                 releaser: r,
             }
         } else {
-            let last_check = RefCell::new(
+            let last_check = Cell::new(
                 EPOCH_TIME
                     .parse::<DateTime<Utc>>()
                     .expect("couldn't create UTC epoch time"),
@@ -455,11 +455,11 @@ where
     }
 
     fn last_check(&self) -> DateTime<Utc> {
-        *self.state.last_check.borrow()
+        self.state.last_check.get()
     }
 
     fn set_last_check(&self, t: DateTime<Utc>) {
-        *self.state.last_check.borrow_mut() = t;
+        self.state.last_check.set(t);
     }
 
     fn update_interval(&self) -> i64 {
