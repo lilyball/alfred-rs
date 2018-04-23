@@ -14,10 +14,10 @@ static MOCKITO_URL: &'static str = mockito::SERVER_URL;
 #[cfg(test)]
 pub const MOCK_RELEASER_REPO_NAME: &str = "Mock/Releaser";
 
-/// An interface for checking with remote servers to indentify latest release for an
+/// An interface for checking with remote servers to identify the latest release for an
 /// Alfred workflow.
 ///
-/// This trait has been implemented for `GithubReleaser` to check for newer version of a workflow
+/// This trait has been implemented for `GithubReleaser` to check for a newer version of a workflow
 /// that's maintained on `github.com`
 pub trait Releaser {
     /// Creates a new `Releaser` instance that is identified as `name`
@@ -34,7 +34,7 @@ pub trait Releaser {
     fn newer_than(&self, version: &Version) -> Result<bool, io::Error>;
 }
 
-// Struct to handle checking and downloaading release files from `github.com`
+// Struct to handle checking and downloading release files from `github.com`
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GithubReleaser {
     repo: String,

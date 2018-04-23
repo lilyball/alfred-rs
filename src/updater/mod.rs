@@ -7,11 +7,11 @@
 //! ```
 //! Using this module, the workflow author will be able to make Alfred
 //! check for & download latest releases from the remote server
-//! within ajustable intervals (default is 24 hrs).
+//! within adjustable intervals (default is 24 hrs).
 //!
 //! For convenience, an associated method [`Updater::gh()`] is available to check for workflows hosted on `github.com`.
 //!
-//! However, it's possible to check with other servers as long as [`Releaser`] trait is
+//! However, it's possible to check with other servers as long as the [`Releaser`] trait is
 //! implemented for the desired remote service.
 //!
 //! The `github.com` hosted repository should have release items following `github`'s process.
@@ -19,14 +19,14 @@
 //! attach/upload `YourWorkflow.alfredworkflow` to the release page.
 //!
 //! The tag should follow all the [semantic versioning] rules.
-//! The only exception to those rulse is that you can prepend your
+//! The only exception to those rules is that you can prepend your
 //! semver tag with ASCII letter `v`: `v0.3.1` or `0.3.1`
 //!
 //! You can easily create `YourWorkflow.alfredworkflow` file by using the [export feature] of
 //! Alfred in its preferences window.
 //!
 //! ### Note to workflow authors
-//! - Workflolw authors should make sure that _released_ workflow files have
+//! - Workflow authors should make sure that _released_ workflow files have
 //! their version set in [Alfred's preferences window].
 //! - However, this module provides [`set_version()`] to set the vesion during runtime.
 //!
@@ -64,11 +64,11 @@
 //!
 //! // Above will save the state of `Updater` in workflow's data folder.
 //! // Depending on how long has elapsed since first run consequent calls
-//! // to `update_ready()` may retuan false if it has been less than
-//! // intervals set for checking (defaults to 24 hours).
+//! // to `update_ready()` may return false if it has been less than
+//! // interval set for checking (defaults to 24 hours).
 //!
 //! // However in subsequent runs, when the checking interval period has elapsed
-//! // and there actually exist a new release, then `update_ready()` will return true.
+//! // and there actually exists a new release, then `update_ready()` will return true.
 //! // In this case, one can download the lastest available release
 //! // to the workflow's default cache folder.
 //! if updater.update_ready().unwrap() {
@@ -94,20 +94,14 @@
 //! #        Ok(())
 //! #    }
 //! # }
-//! #
-//! # fn main() {
-//! #     if let Err(_) = run() {
-//! #         ::std::process::exit(1);
-//! #     } else {
-//! #         ::std::process::exit(0);
-//! #     }
-//! # }
+//!
+//! # fn main() {}
 //! ```
 //!
 //! For the above example to automatically work, you then need to connect the output of the script
-//! to an **Open File** action so that Alfred can insall/upgrade the new version.
+//! to an **Open File** action so that Alfred can install/upgrade the new version.
 //!
-//! As suggested in above exmaple, you can add an Alfred variable to the item so that your workflow
+//! As suggested in above example, you can add an Alfred variable to the item so that your workflow
 //! can use it for further processing.
 //!
 //! See [`Updater::new()`] documentation if you are hosting your workflow on a service other than
@@ -154,9 +148,9 @@ struct UpdaterState {
 }
 
 impl Updater<GithubReleaser> {
-    /// Create an `Updater` object that will talk to a `github` repository to download latest releases.
+    /// Create an `Updater` object that will talk to a `github` repository to download the latest releases.
     ///
-    /// the `repo_name` should be in `user_name/repository_name` form.
+    /// The `repo_name` should be in `user_name/repository_name` form.
     ///
     /// See the [module level documentation](./index.html) for full example and description.
     ///
@@ -170,13 +164,11 @@ impl Updater<GithubReleaser> {
     /// # env::set_var("alfred_workflow_version", "0.0.0");
     /// let updater = Updater::gh("user_name/repo_name");
     /// # }
-    ///
-    /// # fn main() {
-    /// #     ex_new();
-    /// # }
+    /// #
+    /// # fn main() {}
     /// ```
     ///
-    /// `Updater` created using this method will look at the assets
+    /// The `Updater` created using this method will look at the assets
     /// available in each release point and download the first file whose name
     /// ends in `alfred3workflow` or `alfredworkflow`.
     pub fn gh<S>(repo_name: S) -> Self
@@ -193,9 +185,9 @@ impl<T> Updater<T>
 where
     T: Releaser,
 {
-    /// Create an `Updater` that will check & download latest releases from a remote server.
+    /// Create an `Updater` that will check & download the latest release from a remote server.
     ///
-    /// How the `Updater` interacts with remote server should be implemented using the [`Releaser`]
+    /// How the `Updater` interacts with the remote server should be implemented using the [`Releaser`]
     /// trait.
     ///
     /// ```rust
@@ -207,7 +199,7 @@ where
     /// use alfred::Updater;
     /// use alfred::updater::Releaser;
     /// # use std::env;
-    /// # fn ex_remote_releaser() {
+    /// # fn main() {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
@@ -229,10 +221,6 @@ where
     /// }
     ///
     /// let updater: Updater<RemoteCIReleaser> = Updater::new("my_hidden_proj");
-    /// # }
-    ///
-    /// # fn main() {
-    /// #     ex_remote_releaser();
     /// # }
     /// ```
     ///
@@ -281,8 +269,7 @@ where
     ///
     /// # Panics
     /// The method will panic if:
-    /// - the passed value `version` cannot be parsed as a semver compatible string the
-    /// function will panic.
+    /// - the passed value `version` cannot be parsed as a semver compatible string.
     /// - any file io error happens during saving the `Updater` data to disk.
     pub fn set_version<S: AsRef<str>>(&mut self, version: S) {
         self.state.current_version =
@@ -300,16 +287,12 @@ where
     /// # extern crate alfred;
     /// # use alfred::Updater;
     /// # use std::env;
-    /// # fn ex_set_interval() {
+    /// # fn main() {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
     /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
     /// updater.set_interval(7 * 24 * 60 * 60);
-    /// # }
-    ///
-    /// # fn main() {
-    /// #     ex_set_interval();
     /// # }
     /// ```
     ///
@@ -322,8 +305,8 @@ where
 
     /// Checks if a new update is availablle.
     ///
-    /// This method will fetch the latess release information from repoository and compare it to
-    /// current release of the workflow. The repository should tag each release according to
+    /// This method will fetch the latest release information from repository and compare it to
+    /// the current release of the workflow. The repository should tag each release according to
     /// semantic versioning for this to work.
     ///
     /// The workflow will store the timestamp for the very first call to this function as well as
@@ -366,9 +349,7 @@ where
     /// # extern crate alfred;
     /// # use alfred::Updater;
     /// # use std::env;
-    /// # use std::thread;
-    /// # use std::time;
-    /// # fn ex_due_to_check() {
+    /// # fn main() {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
@@ -377,13 +358,8 @@ where
     /// // Assuming it is has been UPDATE_INTERVAL seconds since last time we ran the
     /// // `update_ready()`:
     /// # updater.update_ready();
-    /// # updater.set_interval(1);
-    /// # thread::sleep(time::Duration::from_millis(1001));
+    /// # updater.set_interval(0);
     /// assert_eq!(true, updater.due_to_check());
-    /// # }
-    ///
-    /// # fn main() {
-    /// #     ex_due_to_check();
     /// # }
     /// ```
     ///
@@ -392,9 +368,9 @@ where
             > Duration::seconds(self.update_interval())
     }
 
-    /// Function to download and save the latest release and save into workflow's cache dir.
+    /// Function to download and save the latest release into workflow's cache dir.
     ///
-    /// If download and save operations are both successful, it returns name of file in which the
+    /// If the download and save operations are both successful, it returns name of file in which the
     /// downloaded Alfred workflow bundle is saved.
     ///
     /// The downloaded workflow will be saved in dedicated cache folder of the workflow, and it
@@ -404,13 +380,13 @@ where
     ///
     /// Within shell, it can be installed by issuing something like:
     /// ```bash
-    /// open -a "Alfred 3" latest_release_WORKFLOW-UID.alfredworkflow
+    /// open -b com.runningwithcrayons.Alfred-3 latest_release_WORKFLOW-UID.alfredworkflow
     /// ```
     ///
     /// Or you can add "Run script" object to your workflow and use environment variables set by
     /// Alfred to automaticallly open the downloaded release:
     /// ```bash
-    /// open "$alfred_workflow_cache/latest_release_$alfred_workflow_uid.alfredworkflow"
+    /// open -b com.runningwithcrayons.Alfred-3 "$alfred_workflow_cache/latest_release_$alfred_workflow_uid.alfredworkflow"
     /// ```
     /// # Errors
     /// Downloading latest workflow can fail if network error, file error or Alfred environment variable
