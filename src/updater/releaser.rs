@@ -1,10 +1,11 @@
+use failure::err_msg;
+use failure::Error;
 #[cfg(test)]
 use mockito;
 use reqwest;
 use semver::Version;
 use serde_json;
 use std::cell::RefCell;
-use std::io;
 
 const GITHUB_API_URL: &str = "https://api.github.com/repos/";
 const GITHUB_LATEST_RELEASE_ENDPOINT: &str = "/releases/latest";
@@ -26,12 +27,12 @@ pub trait Releaser {
     /// Returns an `Ok(url)` that can be used to directly download the `.alfredworkflow`
     ///
     /// Method returns `Err(io::Error)` on file or network error.
-    fn downloadable_url(&self) -> Result<String, io::Error>;
+    fn downloadable_url(&self) -> Result<String, Error>;
 
     /// Checks if the latest available release is newer than `version`
     ///
     /// Method returns `Err(io::Error)` on file or network error.
-    fn newer_than(&self, version: &Version) -> Result<bool, io::Error>;
+    fn newer_than(&self, version: &Version) -> Result<bool, Error>;
 }
 
 // Struct to handle checking and downloading release files from `github.com`
@@ -68,7 +69,7 @@ impl GithubReleaser {
         }
     }
 
-    fn latest_release_data(&self) -> Result<(), io::Error> {
+    fn latest_release_data(&self) -> Result<(), Error> {
         let client = reqwest::Client::new();
 
         #[cfg(test)]
@@ -87,24 +88,19 @@ impl GithubReleaser {
             GITHUB_API_URL, self.repo, GITHUB_LATEST_RELEASE_ENDPOINT
         );
 
-        let resp = client
+        client
             .get(&url)
-            .send()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-        if !resp.status().is_success() {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                resp.status().to_string(),
-            ))
-        } else {
-            let mut latest: ReleaseItem = serde_json::from_reader(resp)
-                .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-            if latest.tag_name.starts_with('v') {
-                latest.tag_name = latest.tag_name.as_str()[1..].to_string();
-            }
-            *self.latest_release.borrow_mut() = Some(latest);
-            Ok(())
-        }
+            .send()?
+            .error_for_status()
+            .map_err(|e| e.into())
+            .and_then(|resp| {
+                let mut latest: ReleaseItem = serde_json::from_reader(resp)?;
+                if latest.tag_name.starts_with('v') {
+                    latest.tag_name = latest.tag_name.as_str()[1..].to_string();
+                }
+                *self.latest_release.borrow_mut() = Some(latest);
+                Ok(())
+            })
     }
 }
 
@@ -115,7 +111,7 @@ impl Releaser for GithubReleaser {
 
     // This implementation of Releaser will favor urls that end with `alfred3workflow`
     // over `alfredworkflow`
-    fn downloadable_url(&self) -> Result<String, io::Error> {
+    fn downloadable_url(&self) -> Result<String, Error> {
         let release = self.latest_release.borrow();
         let urls = release.as_ref().map(|r| {
             r.assets
@@ -129,10 +125,7 @@ impl Releaser for GithubReleaser {
                 .collect::<Vec<&String>>()
         });
         let urls = urls.ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                "no release item available, did you check with newer_than?",
-            )
+            err_msg("no release item available, did you check with newer_than?")
         })?;
 
         if urls.len() == 1 {
@@ -145,14 +138,11 @@ impl Releaser for GithubReleaser {
             };
             Ok(u)
         } else {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "no usable download url",
-            ))
+            Err(err_msg("no usable download url"))
         }
     }
 
-    fn newer_than(&self, v: &Version) -> Result<bool, io::Error> {
+    fn newer_than(&self, v: &Version) -> Result<bool, Error> {
         if self.latest_release.borrow().is_none() {
             self.latest_release_data()?;
         }
@@ -161,15 +151,9 @@ impl Releaser for GithubReleaser {
             .borrow()
             .as_ref()
             .map(|r| Version::parse(&r.tag_name).ok())
-            .ok_or_else(|| {
-                io::Error::new(io::ErrorKind::Other, "Couldn't parse fetched version.")
-            })?;
-        Ok(*v < latest_version.ok_or_else(|| str_to_io_err("should have version at this point"))?)
+            .ok_or_else(|| err_msg("Couldn't parse fetched version."))?;
+        Ok(*v < latest_version.ok_or_else(|| err_msg("should have version at this point"))?)
     }
-}
-
-pub fn str_to_io_err<S: AsRef<str>>(s: S) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, s.as_ref())
 }
 
 #[cfg(test)]

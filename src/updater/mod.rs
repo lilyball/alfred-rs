@@ -48,15 +48,18 @@
 //!
 //! ```rust
 //! # extern crate alfred;
+//! # extern crate failure;
 //! use alfred::Updater;
 //!
 //! # use std::env;
+//! # use failure::Error;
 //! # use std::io;
-//! # fn run() -> Result<(), io::Error> {
+//! # fn run() -> Result<(), Error> {
 //! # env::set_var("alfred_workflow_uid", "abcdef");
 //! # env::set_var("alfred_workflow_data", env::temp_dir());
 //! # env::set_var("alfred_workflow_version", "0.0.0");
-//! let updater = Updater::gh("spamwax/alfred-pinboard-rs");
+//! let updater =
+//!     Updater::gh("spamwax/alfred-pinboard-rs").expect("cannot initiate Updater");
 //!
 //! // The very first call to `update_ready()` will return `false`
 //! // since it's assumed that user has just downloaded the workflow.
@@ -107,9 +110,9 @@
 //! See [`Updater::new()`] documentation if you are hosting your workflow on a service other than
 //! `github.com` for an example of how to do it.
 
-use self::releaser::str_to_io_err;
 use chrono::prelude::*;
 use env;
+use failure::{err_msg, Error};
 use reqwest;
 use semver::Version;
 use serde_json;
@@ -117,8 +120,7 @@ use std::cell::Cell;
 use std::env as StdEnv;
 use std::fs::{create_dir_all, File};
 use std::io::{BufReader, BufWriter};
-use std::io::{Error, ErrorKind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use time::Duration;
 
 mod releaser;
@@ -160,7 +162,7 @@ impl Updater<GithubReleaser> {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
-    /// let updater = Updater::gh("user_name/repo_name");
+    /// let updater = Updater::gh("user_name/repo_name").expect("cannot initiate Updater");
     /// # }
     /// #
     /// # fn main() {}
@@ -169,7 +171,7 @@ impl Updater<GithubReleaser> {
     /// The `Updater` created using this method will look at the assets
     /// available in each release point and download the first file whose name
     /// ends in `alfred3workflow` or `alfredworkflow`.
-    pub fn gh<S>(repo_name: S) -> Self
+    pub fn gh<S>(repo_name: S) -> Result<Self, Error>
     where
         S: Into<String>,
     {
@@ -191,12 +193,14 @@ where
     /// ```rust
     /// # extern crate alfred;
     /// # extern crate semver;
+    /// # extern crate failure;
     /// use std::io;
     ///
     /// use semver::Version;
     /// use alfred::Updater;
     /// use alfred::updater::Releaser;
     /// # use std::env;
+    /// # use failure::Error;
     /// # fn main() {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
@@ -210,15 +214,16 @@ where
     ///     fn new<S: Into<String>>(project_id: S) -> Self {
     ///         RemoteCIReleaser {}
     ///     }
-    ///     fn downloadable_url(&self) -> Result<String, io::Error> {
+    ///     fn downloadable_url(&self) -> Result<String, Error> {
     ///         Ok("ci.remote.cc".to_string())
     ///     }
-    ///     fn newer_than(&self, v: &Version) -> Result<bool, io::Error> {
+    ///     fn newer_than(&self, v: &Version) -> Result<bool, Error> {
     ///         Ok(true)
     ///     }
     /// }
     ///
-    /// let updater: Updater<RemoteCIReleaser> = Updater::new("my_hidden_proj");
+    /// let updater: Updater<RemoteCIReleaser> =
+    ///     Updater::new("my_hidden_proj").expect("cannot initiate Updater");
     /// # }
     /// ```
     ///
@@ -226,7 +231,7 @@ where
     /// Method will panic if
     /// - `Updater` state cannot be read/written during instantiation, or
     /// - The workflow version cannot be parsed as semver compatible identifier.
-    pub fn new<S>(repo_name: S) -> Updater<T>
+    pub fn new<S>(repo_name: S) -> Result<Updater<T>, Error>
     where
         S: Into<String>,
     {
@@ -245,16 +250,19 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// # extern crate alfred;
+    /// # extern crate failure;
     /// # use alfred::Updater;
     /// # use std::env;
-    /// # fn ex_set_version() {
+    /// # use failure::Error;
+    /// # fn ex_set_version() -> Result<(), Error> {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
-    /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
+    /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs")?;
     /// updater.set_version("0.23.3");
+    /// # Ok(())
     /// # }
     ///
     /// # fn main() {
@@ -278,7 +286,7 @@ where
     /// # Example
     /// Set interval to be 7 days
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// # extern crate alfred;
     /// # use alfred::Updater;
     /// # use std::env;
@@ -286,7 +294,8 @@ where
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
-    /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
+    /// let mut updater =
+    ///     Updater::gh("spamwax/alfred-pinboard-rs").expect("cannot initiate Updater");
     /// updater.set_interval(7 * 24 * 60 * 60);
     /// # }
     /// ```
@@ -311,20 +320,20 @@ where
     /// Checking for update can fail if network error, file error or Alfred environment variable
     /// errors happen.
     pub fn update_ready(&self) -> Result<bool, Error> {
-        // last_check equal to EPOCH_TIME indicates that workflow is being run for first time.
-        // Thus we update last_check to now and just save the updater state without checking for
-        // updates since we assume user just downloaded the workflow. This change will trigger the
-        // check after UPDATE_INTERVAL seconds.
+        // A None value for last_check indicates that workflow is being run for first time.
+        // Thus we update last_check to now and just save the updater state without asking
+        // Releaser to do a remote call/check for us since we assume that user just downloaded
+        // the workflow.
 
         if self.last_check().is_none() {
             self.set_last_check(Utc::now());
             self.save()?;
             Ok(false)
         } else if self.due_to_check() {
-            let r = self.releaser.newer_than(self.current_version());
+            let r = self.releaser.newer_than(self.current_version())?;
             self.set_last_check(Utc::now());
             self.save()?;
-            r
+            Ok(r)
         } else {
             Ok(false)
         }
@@ -339,21 +348,27 @@ where
     ///
     /// # Example
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// # extern crate alfred;
+    /// # extern crate failure;
     /// # use alfred::Updater;
     /// # use std::env;
-    /// # fn main() {
+    /// # use failure::Error;
+    /// # fn run() -> Result<(), Error> {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
     /// # env::set_var("alfred_workflow_version", "0.0.0");
-    /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
+    /// let mut updater = Updater::gh("spamwax/alfred-pinboard-rs")?;
     ///
     /// // Assuming it is has been UPDATE_INTERVAL seconds since last time we ran the
     /// // `update_ready()`:
     /// # updater.update_ready();
     /// # updater.set_interval(0);
     /// assert_eq!(true, updater.due_to_check());
+    /// # Ok(())
+    /// # }
+    /// # fn main() {
+    /// # run();
     /// # }
     /// ```
     ///
@@ -379,7 +394,7 @@ where
     /// ```
     ///
     /// Or you can add "Run script" object to your workflow and use environment variables set by
-    /// Alfred to automaticallly open the downloaded release:
+    /// Alfred to automatically open the downloaded release:
     /// ```bash
     /// open -b com.runningwithcrayons.Alfred-3 "$alfred_workflow_cache/latest_release_$alfred_workflow_uid.alfredworkflow"
     /// ```
@@ -389,27 +404,34 @@ where
     pub fn download_latest(&self) -> Result<PathBuf, Error> {
         let url = self.releaser.downloadable_url()?;
         let client = reqwest::Client::new();
-        let mut resp = client
-            .get(url.as_str())
-            .send()
-            .map_err(|e| str_to_io_err(e.to_string()))?;
-        if !resp.status().is_success() {
-            Err(str_to_io_err("unsuccessful github download"))
-        } else {
-            let mut latest_release_downloaded_fn = env::workflow_cache()
-                .ok_or_else(|| str_to_io_err("couldn't get workflow's cache dir"))?;
-            latest_release_downloaded_fn.push(format!(
-                "latest_release_{}.alfredworkflow",
-                env::workflow_uid().ok_or_else(|| str_to_io_err("workflow without uid!"))?
-            ));
 
-            File::create(&latest_release_downloaded_fn).and_then(|fp| {
-                let mut buf_writer = BufWriter::with_capacity(0x10_0000, fp);
-                resp.copy_to(&mut buf_writer)
-                    .map_err(|e| Error::new(ErrorKind::Other, e))?;
-                Ok(latest_release_downloaded_fn)
+        client
+            .get(url.as_str())
+            .send()?
+            .error_for_status()
+            .map_err(|e| e.into())
+            .and_then(|mut resp| {
+                env::workflow_cache()
+                    .ok_or_else(|| err_msg("missing env variable for cache dir"))
+                    .and_then(|mut cache_dir| {
+                        env::workflow_uid()
+                            .ok_or_else(|| err_msg("missing env variable for uid"))
+                            .and_then(|ref uid| {
+                                cache_dir
+                                    .push(["latest_release_", uid, ".alfredworkflow"].concat());
+                                Ok(cache_dir)
+                            })
+                    })
+                    .and_then(|latest_release_downloaded_fn| {
+                        File::create(&latest_release_downloaded_fn)
+                            .map_err(|e| e.into())
+                            .and_then(|fp| {
+                                let mut buf_writer = BufWriter::with_capacity(0x10_0000, fp);
+                                resp.copy_to(&mut buf_writer)?;
+                                Ok(latest_release_downloaded_fn)
+                            })
+                    })
             })
-        }
     }
 }
 
@@ -417,25 +439,23 @@ impl<T> Updater<T>
 where
     T: Releaser,
 {
-    fn load_or_new(r: Box<T>) -> Self {
-        let data_path = Self::build_data_fn().unwrap();
-        if data_path.exists() {
-            Updater {
-                state: Self::load(&data_path),
+    fn load_or_new(r: Box<T>) -> Result<Self, Error> {
+        if let Ok(saved_state) = Self::load() {
+            Ok(Updater {
+                state: saved_state,
                 releaser: r,
-            }
+            })
         } else {
             let current_version = env::workflow_version()
-                .map(|s| Version::parse(&s).expect("version should follow semver rules"))
-                .unwrap_or_else(|| Version::from((0, 0, 0)));
+                .map_or_else(|| Ok(Version::from((0, 0, 0))), |v| Version::parse(&v))?;
             let state = UpdaterState {
                 current_version,
                 last_check: Cell::new(None),
                 update_interval: UPDATE_INTERVAL,
             };
             let updater = Updater { state, releaser: r };
-            updater.save().expect("cannot save updater data to file.");
-            updater
+            updater.save()?;
+            Ok(updater)
         }
     }
 
@@ -459,48 +479,57 @@ where
         self.state.update_interval = t;
     }
 
-    fn load(data_file: &PathBuf) -> UpdaterState {
-        File::open(data_file)
-            .and_then(|fp| {
-                let buf_reader = BufReader::with_capacity(128, fp);
-                serde_json::from_reader(buf_reader).map_err(|e| {
-                    use std::io::{Error, ErrorKind};
-                    Error::new(ErrorKind::Other, e)
-                })
-            })
-            .expect("couldn't read updater's saved data")
+    fn load() -> Result<UpdaterState, Error> {
+        Self::build_data_fn().and_then(|data_file_path| {
+            if data_file_path.exists() {
+                Ok(File::open(data_file_path).and_then(|fp| {
+                    let buf_reader = BufReader::with_capacity(128, fp);
+                    Ok(serde_json::from_reader(buf_reader)?)
+                })?)
+            } else {
+                Err(err_msg("missing updater data file"))
+            }
+        })
     }
 
     fn save(&self) -> Result<(), Error> {
-        let data_path =
-            env::workflow_data().ok_or_else(|| str_to_io_err("cannot get workflow data dir"))?;
-        create_dir_all(data_path)?;
-
-        let data_file_path = Self::build_data_fn()?;
-        let fp = File::create(data_file_path)
-            .map_err(|_| str_to_io_err("canno create updater's saved data"))?;
-        let buf_writer = BufWriter::with_capacity(128, fp);
-        serde_json::to_writer(buf_writer, &self.state).map_err(|e| str_to_io_err(e.to_string()))
+        Self::build_data_fn()
+            .and_then(|data_file_path| {
+                create_dir_all(data_file_path.parent().unwrap())?;
+                Ok(data_file_path)
+            })
+            .and_then(|data_file_path| Ok(File::create(data_file_path)?))
+            .and_then(|fp| {
+                let buf_writer = BufWriter::with_capacity(128, fp);
+                serde_json::to_writer(buf_writer, &self.state)?;
+                Ok(())
+            })
     }
 
     fn build_data_fn() -> Result<PathBuf, Error> {
-        let mut data_path =
-            env::workflow_data().ok_or_else(|| str_to_io_err("cannot get workflow data dir"))?;
+        let workflow_name = env::workflow_name()
+            .unwrap_or_else(|| "YouForgotToNameYourOwnWorkflow".to_string())
+            .replace('/', "-")
+            .replace(' ', "-");
 
-        let saved_updater_fn = [
-            env::workflow_uid()
-                .ok_or_else(|| str_to_io_err("cannot get workflow_uid"))?
-                .as_ref(),
-            "-",
-            env::workflow_name()
-                .unwrap_or_else(|| "YouForgotToNameYourOwnWorkflow".to_string())
-                .replace('/', "-")
-                .replace(' ', "-")
-                .as_str(),
-            "-updater.json",
-        ].concat();
-        data_path.push(saved_updater_fn);
-        Ok(data_path)
+        env::workflow_uid()
+            .ok_or_else(|| err_msg("missing env variable for uid"))
+            .and_then(|ref uid| {
+                let path = Path::new(
+                    [uid, "-", workflow_name.as_str(), "-updater"]
+                        .concat()
+                        .as_str(),
+                ).with_extension("json");
+                Ok(path)
+            })
+            .and_then(|data_fn| {
+                env::workflow_data()
+                    .ok_or_else(|| err_msg("missing env variable for data dir"))
+                    .and_then(|mut data_path| {
+                        data_path.push(data_fn);
+                        Ok(data_path)
+                    })
+            })
     }
 }
 
@@ -528,24 +557,26 @@ mod tests {
         assert!(!updater_state_fn.exists());
 
         // Create a new Updater, and check if there is an update available
-        let mut updater: Updater<GithubReleaser> = Updater::new("spamwax/alfred-pinboard-rs");
+        let mut updater: Updater<GithubReleaser> =
+            Updater::new("spamwax/alfred-pinboard-rs").expect("cannot build Updater");
         assert_eq!(VERSION_TEST, format!("{}", updater.current_version()));
         assert!(!updater.update_ready().expect("couldn't check for update"));
         updater.set_interval(-1);
 
         // Now creating another one, will load the updater from file
         assert!(updater_state_fn.exists());
-        let updater: Updater<GithubReleaser> = Updater::new("spamwax/alfred-pinboard-rs");
+        let updater: Updater<GithubReleaser> =
+            Updater::new("spamwax/alfred-pinboard-rs").expect("cannot build Updater");
         assert_eq!(-1, updater.update_interval())
     }
 
     #[test]
-    #[should_panic(expected = "400 Bad Request")]
+    #[should_panic(expected = "ClientError(BadRequest)")]
     fn it_handles_server_error_1() {
         setup_workflow_env_vars(true);
         let _m = setup_mock_server(200);
 
-        let mut updater = Updater::gh(MOCK_RELEASER_REPO_NAME);
+        let mut updater = Updater::gh(MOCK_RELEASER_REPO_NAME).expect("cannot build Updater");
         // First update_ready is always false.
         assert_eq!(
             false,
@@ -563,7 +594,7 @@ mod tests {
         setup_workflow_env_vars(true);
         let _m = setup_mock_server(200);
 
-        let mut updater = Updater::gh(MOCK_RELEASER_REPO_NAME);
+        let mut updater = Updater::gh(MOCK_RELEASER_REPO_NAME).expect("cannot build Updater");
 
         assert_eq!(
             false,
@@ -582,7 +613,7 @@ mod tests {
     fn it_talks_to_github() {
         setup_workflow_env_vars(true);
 
-        let mut updater = Updater::gh("spamwax/alfred-pinboard-rs");
+        let mut updater = Updater::gh("spamwax/alfred-pinboard-rs").expect("cannot build Updater");
         assert_eq!(VERSION_TEST, format!("{}", updater.current_version()));
 
         assert!(updater.last_check().is_none());
@@ -611,7 +642,7 @@ mod tests {
         setup_workflow_env_vars(true);
         let _m = setup_mock_server(200);
 
-        let mut updater = Updater::gh(MOCK_RELEASER_REPO_NAME);
+        let mut updater = Updater::gh(MOCK_RELEASER_REPO_NAME).expect("cannot build Updater");
         assert_eq!(
             false,
             updater.update_ready().expect("couldn't check for update")
@@ -625,9 +656,9 @@ mod tests {
         assert!(updater.download_latest().is_ok());
     }
 
-    pub fn setup_workflow_env_vars(secure_temp_dir: bool) {
+    pub fn setup_workflow_env_vars(secure_temp_dir: bool) -> PathBuf {
         // Mimic Alfred's environment variables
-        let v = if secure_temp_dir {
+        let path = if secure_temp_dir {
             Builder::new()
                 .prefix("download_latest_test")
                 .rand_bytes(5)
@@ -637,12 +668,20 @@ mod tests {
         } else {
             StdEnv::temp_dir()
         };
-        let v: &OsStr = v.as_ref();
-        StdEnv::set_var("alfred_workflow_data", v);
-        StdEnv::set_var("alfred_workflow_bundleid", "MY_BUNDLE_ID");
-        StdEnv::set_var("alfred_workflow_cache", v);
-        StdEnv::set_var("alfred_workflow_uid", "workflow.B0AC54EC-601C");
-        StdEnv::set_var("alfred_workflow_name", "YouForgotToNameYourOwnWorkflow");
-        StdEnv::set_var("alfred_workflow_version", VERSION_TEST);
+        {
+            let v: &OsStr = path.as_ref();
+            StdEnv::set_var("alfred_workflow_data", v);
+            StdEnv::set_var("alfred_workflow_cache", v);
+            StdEnv::set_var("alfred_workflow_uid", "workflow.B0AC54EC-601C");
+            StdEnv::set_var("alfred_workflow_name", "YouForgotToNameYourOwnWorkflow");
+            StdEnv::set_var("alfred_workflow_bundleid", "MY_BUNDLE_ID");
+            StdEnv::set_var("alfred_workflow_version", VERSION_TEST);
+            println!(
+                "\ndata: {:#?}\ncache: {:#?}",
+                env::workflow_data().unwrap(),
+                env::workflow_cache().unwrap()
+            );
+        }
+        path
     }
 }

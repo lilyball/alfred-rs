@@ -132,6 +132,11 @@ extern crate tempfile;
 
 #[cfg(feature = "updater")]
 extern crate chrono;
+#[cfg(feature = "updater")]
+extern crate failure;
+#[cfg(feature = "updater")]
+#[macro_use]
+extern crate failure_derive;
 #[cfg(test)]
 extern crate mockito;
 #[cfg(feature = "updater")]
