@@ -131,6 +131,8 @@ pub use self::releaser::Releaser;
 /// Default update interval duration 24 hr
 const UPDATE_INTERVAL: i64 = 24 * 60 * 60;
 
+const LATEST_UPDATE_INFO_CACHE_FN: &str = "last_check_status.json";
+
 /// Struct to check for & download the latest release of workflow from a remote server.
 pub struct Updater<T>
 where
@@ -217,8 +219,8 @@ where
     ///     fn downloadable_url(&self) -> Result<String, Error> {
     ///         Ok("ci.remote.cc".to_string())
     ///     }
-    ///     fn newer_than(&self, v: &Version) -> Result<bool, Error> {
-    ///         Ok(true)
+    ///     fn latest_version(&self) -> Result<Version, Error> {
+    ///         Ok(Version::from((1, 0, 12)))
     ///     }
     /// }
     ///
@@ -325,17 +327,69 @@ where
         // Releaser to do a remote call/check for us since we assume that user just downloaded
         // the workflow.
 
+        // wf's data dir
+        let p: &PathBuf = &env::workflow_data()
+            .ok_or_else(|| err_msg("missing env variable for data dir"))
+            .and_then(|mut dir| {
+                dir.push(LATEST_UPDATE_INFO_CACHE_FN);
+                Ok(dir)
+            })?;
+
+        // write version of latest avail. release (if any) to a cache file
+        let write_last_check_status = |version: Option<Version>| -> Result<(), Error> {
+            File::create(p).and_then(|fp| {
+                let buf_writer = BufWriter::with_capacity(128, fp);
+                serde_json::to_writer(buf_writer, &version)?;
+                Ok(())
+            })?;
+            Ok(())
+        };
+
+        // read version of latest avail. release (if any) from a cache file
+        let read_last_check_status = || -> Result<Option<Version>, Error> {
+            Ok(File::open(p).and_then(|fp| {
+                let buf_reader = BufReader::with_capacity(128, fp);
+                let v = serde_json::from_reader(buf_reader)?;
+                Ok(v)
+            })?)
+        };
+
+        // make a network call to see if a newer version is avail.
+        // save the result of call to cache file.
+        let ask_releaser_for_update = || -> Result<bool, Error> {
+            let v = self.releaser.latest_version()?;
+            let r = *self.current_version() < v;
+            write_last_check_status(if r { Some(v) } else { None })?;
+            self.set_last_check(Utc::now());
+            self.save()?;
+            Ok(r)
+        };
+
+        // if first time checking, just update the updater's timestamp, no network call
         if self.last_check().is_none() {
             self.set_last_check(Utc::now());
             self.save()?;
             Ok(false)
         } else if self.due_to_check() {
-            let r = self.releaser.newer_than(self.current_version())?;
-            self.set_last_check(Utc::now());
-            self.save()?;
-            Ok(r)
+            // it's time to talk to remote server
+            ask_releaser_for_update()
         } else {
-            Ok(false)
+            // if can't read a cache (corrupted or missing which can happen
+            // if wf is cancelled while the network call or file operation was undergoing
+            // we make another network call. Otherwise we use its content to report if an
+            // update is ready or not until the next due check is upon us.
+            match read_last_check_status() {
+                Err(_) => ask_releaser_for_update(),
+                Ok(last_check_status) => {
+                    if last_check_status.is_some()
+                        && last_check_status.as_ref().unwrap() > self.current_version()
+                    {
+                        Ok(true)
+                    } else {
+                        Ok(false)
+                    }
+                }
+            }
         }
     }
 
@@ -551,7 +605,6 @@ mod tests {
     fn it_loads_last_updater_state() {
         setup_workflow_env_vars(true);
         let updater_state_fn = Updater::<GithubReleaser>::build_data_fn().unwrap();
-        println!("updater_state_fn: {:#?}", updater_state_fn);
 
         let _ = remove_file(&updater_state_fn);
         assert!(!updater_state_fn.exists());
@@ -630,11 +683,42 @@ mod tests {
         // update should be ready since alfred-pinboard-rs
         // already has newer than VERSION_TEST.
         assert!(updater.update_ready().expect("couldn't check for update"));
+
         // Download from github
         assert!(updater.download_latest().is_ok());
         // no more updates.
         updater.set_interval(60);
         assert!(!updater.due_to_check());
+    }
+
+    #[test]
+    #[cfg(not(feature = "ci"))]
+    fn it_does_one_network_call_per_interval() {
+        setup_workflow_env_vars(true);
+        let _m = setup_mock_server(200);
+
+        let mut updater = Updater::gh("spamwax/alfred-pinboard-rs").expect("cannot build Updater");
+
+        // Calling update_ready on first run of workflow will return false since we assume workflow
+        // was just downloaded.
+        assert!(!updater.update_ready().expect("couldn't check for update"));
+
+        // Next check will be immediate
+        updater.set_interval(0);
+
+        // Next update_ready will make a network call
+        assert!(updater.update_ready().expect("couldn't check for update"));
+
+        // Increase interval
+        updater.set_interval(86400);
+        assert!(!updater.due_to_check());
+
+        // make mock server return error. This way we can test that no network call was made
+        let _m = setup_mock_server(503);
+        let t = updater.update_ready();
+        assert!(t.is_ok());
+        // Make sure we stil report update is ready
+        assert_eq!(true, t.unwrap());
     }
 
     #[test]
@@ -660,7 +744,7 @@ mod tests {
         // Mimic Alfred's environment variables
         let path = if secure_temp_dir {
             Builder::new()
-                .prefix("download_latest_test")
+                .prefix("alfred_rs_test")
                 .rand_bytes(5)
                 .tempdir()
                 .unwrap()

@@ -26,13 +26,13 @@ pub trait Releaser {
 
     /// Returns an `Ok(url)` that can be used to directly download the `.alfredworkflow`
     ///
-    /// Method returns `Err(io::Error)` on file or network error.
+    /// Method returns `Err(Error)` on file or network error.
     fn downloadable_url(&self) -> Result<String, Error>;
 
-    /// Checks if the latest available release is newer than `version`
+    /// Returns the latest release's version that is available for download from server
     ///
-    /// Method returns `Err(io::Error)` on file or network error.
-    fn newer_than(&self, version: &Version) -> Result<bool, Error>;
+    /// Method returns `Err(Error)` on file or network error.
+    fn latest_version(&self) -> Result<Version, Error>;
 }
 
 // Struct to handle checking and downloading release files from `github.com`
@@ -125,7 +125,9 @@ impl Releaser for GithubReleaser {
                 .collect::<Vec<&String>>()
         });
         let urls = urls.ok_or_else(|| {
-            err_msg("no release item available, did you check with newer_than?")
+            err_msg(
+                "no release item available, did you first get version by calling latest_version?",
+            )
         })?;
 
         if urls.len() == 1 {
@@ -142,7 +144,7 @@ impl Releaser for GithubReleaser {
         }
     }
 
-    fn newer_than(&self, v: &Version) -> Result<bool, Error> {
+    fn latest_version(&self) -> Result<Version, Error> {
         if self.latest_release.borrow().is_none() {
             self.latest_release_data()?;
         }
@@ -151,8 +153,9 @@ impl Releaser for GithubReleaser {
             .borrow()
             .as_ref()
             .map(|r| Version::parse(&r.tag_name).ok())
-            .ok_or_else(|| err_msg("Couldn't parse fetched version."))?;
-        Ok(*v < latest_version.ok_or_else(|| err_msg("should have version at this point"))?)
+            .ok_or_else(|| err_msg("Couldn't parse fetched version."))?
+            .unwrap();
+        Ok(latest_version)
     }
 }
 
@@ -166,13 +169,13 @@ pub mod tests {
         let _m = setup_mock_server(200);
         let releaser = GithubReleaser::new(MOCK_RELEASER_REPO_NAME);
 
-        // Calling downloadable_url before checking for newer_than will return error
+        // Calling downloadable_url before checking for latest_version will return error
         assert!(releaser.downloadable_url().is_err());
 
         assert!(
             releaser
-                .newer_than(&Version::from((0, 0, 0)))
-                .expect("couldn't do newer_than")
+                .latest_version()
+                .expect("couldn't do latest_version") > Version::from((0, 11, 0))
         );
 
         assert_eq!("http://127.0.0.1:1234/releases/download/v0.11.1/alfred-pinboard-rust-v0.11.1.alfredworkflow",
