@@ -135,7 +135,6 @@ extern crate chrono;
 #[cfg(feature = "updater")]
 extern crate failure;
 #[cfg(feature = "updater")]
-#[macro_use]
 extern crate failure_derive;
 #[cfg(test)]
 extern crate mockito;
@@ -148,6 +147,8 @@ extern crate semver;
 extern crate serde_derive;
 #[cfg(feature = "updater")]
 extern crate time;
+#[cfg(feature = "updater")]
+extern crate url;
 
 pub mod env;
 pub mod json;

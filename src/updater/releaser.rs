@@ -6,6 +6,7 @@ use reqwest;
 use semver::Version;
 use serde_json;
 use std::cell::RefCell;
+use url::Url;
 
 const GITHUB_API_URL: &str = "https://api.github.com/repos/";
 const GITHUB_LATEST_RELEASE_ENDPOINT: &str = "/releases/latest";
@@ -27,7 +28,7 @@ pub trait Releaser {
     /// Returns an `Ok(url)` that can be used to directly download the `.alfredworkflow`
     ///
     /// Method returns `Err(Error)` on file or network error.
-    fn downloadable_url(&self) -> Result<String, Error>;
+    fn downloadable_url(&self) -> Result<Url, Error>;
 
     /// Returns the latest release's version that is available for download from server
     ///
@@ -111,7 +112,7 @@ impl Releaser for GithubReleaser {
 
     // This implementation of Releaser will favor urls that end with `alfred3workflow`
     // over `alfredworkflow`
-    fn downloadable_url(&self) -> Result<String, Error> {
+    fn downloadable_url(&self) -> Result<Url, Error> {
         let release = self.latest_release.borrow();
         let urls = release.as_ref().map(|r| {
             r.assets
@@ -131,14 +132,11 @@ impl Releaser for GithubReleaser {
         })?;
 
         if urls.len() == 1 {
-            Ok(urls[0].clone())
+            Ok(Url::parse(urls[0])?)
         } else if urls.len() > 1 {
             let url = urls.iter().find(|item| item.ends_with("alfred3workflow"));
-            let u = match url {
-                Some(&link) => (*link).clone(),
-                None => urls[0].clone(),
-            };
-            Ok(u)
+            let u = url.unwrap_or(&urls[0]);
+            Ok(Url::parse(u)?)
         } else {
             Err(err_msg("no usable download url"))
         }
@@ -179,7 +177,7 @@ pub mod tests {
         );
 
         assert_eq!("http://127.0.0.1:1234/releases/download/v0.11.1/alfred-pinboard-rust-v0.11.1.alfredworkflow",
-                   releaser.downloadable_url().unwrap());
+                   releaser.downloadable_url().unwrap().as_str());
     }
 
     pub fn setup_mock_server(status_code: usize) -> Mock {

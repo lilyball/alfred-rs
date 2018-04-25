@@ -25,11 +25,12 @@ serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"], optional = true }
 failure = { version = "0.1.1", optional = true }
 failure_derive = { version = "0.1.1", optional = true }
-reqwest = {version = "0.8", optional = true}
+reqwest = { version = "0.8", optional = true }
+url = { version = "1.5", optional = true }
 semver = {version = "0.9", features = ["serde"], optional = true }
-serde = {version = "1.0", optional = true}
-serde_derive = {version = "1.0", optional = true}
-time = {version = "0.1", optional = true}
+serde = { version = "1.0", optional = true }
+serde_derive = { version = "1.0", optional = true }
+time = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tempfile = "^3.0"
@@ -37,7 +38,7 @@ mockito = "0.9"
 
 [features]
 default = []
-updater = ["chrono", "failure", "failure_derive", "reqwest", "semver", "serde", "serde_derive", "time"]
+updater = ["chrono", "failure", "failure_derive", "reqwest", "semver", "serde", "serde_derive", "time", "url"]
 
 # are we testing on CI?
 ci = ["updater"]

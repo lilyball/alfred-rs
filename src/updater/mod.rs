@@ -460,7 +460,7 @@ where
         let client = reqwest::Client::new();
 
         client
-            .get(url.as_str())
+            .get(url)
             .send()?
             .error_for_status()
             .map_err(|e| e.into())
