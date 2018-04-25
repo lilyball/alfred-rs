@@ -563,8 +563,9 @@ where
     fn build_data_fn() -> Result<PathBuf, Error> {
         let workflow_name = env::workflow_name()
             .unwrap_or_else(|| "YouForgotToNameYourOwnWorkflow".to_string())
-            .replace('/', "-")
-            .replace(' ', "-");
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>();
 
         env::workflow_uid()
             .ok_or_else(|| err_msg("missing env variable for uid"))
