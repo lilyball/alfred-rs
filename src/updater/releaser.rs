@@ -32,6 +32,9 @@ pub trait Releaser {
 
     /// Returns the latest release's version that is available for download from server
     ///
+    /// Implementors are strongly encouraged to get the meta-data about the latest release without
+    /// performing a full download of the workflow.
+    ///
     /// Method returns `Err(Error)` on file or network error.
     fn latest_version(&self) -> Result<Version, Error>;
 }
@@ -62,14 +65,19 @@ struct ReleaseAsset {
     browser_download_url: String,
 }
 
-impl GithubReleaser {
-    fn new<S: Into<String>>(s: S) -> Self {
+impl<S> From<S> for GithubReleaser
+where
+    S: Into<String>,
+{
+    fn from(s: S) -> Self {
         GithubReleaser {
             repo: s.into(),
             latest_release: RefCell::new(None),
         }
     }
+}
 
+impl GithubReleaser {
     fn latest_release_data(&self) -> Result<(), Error> {
         let client = reqwest::Client::new();
 
@@ -107,39 +115,40 @@ impl GithubReleaser {
 
 impl Releaser for GithubReleaser {
     fn new<S: Into<String>>(repo_name: S) -> GithubReleaser {
-        GithubReleaser::new(repo_name)
+        From::from(repo_name)
     }
 
     // This implementation of Releaser will favor urls that end with `alfred3workflow`
     // over `alfredworkflow`
     fn downloadable_url(&self) -> Result<Url, Error> {
-        let release = self.latest_release.borrow();
-        let urls = release.as_ref().map(|r| {
-            r.assets
-                .iter()
-                .filter(|asset| {
-                    asset.state == "uploaded"
-                        && (asset.browser_download_url.ends_with("alfredworkflow")
-                            || asset.browser_download_url.ends_with("alfred3workflow"))
-                })
-                .map(|asset| &asset.browser_download_url)
-                .collect::<Vec<&String>>()
-        });
-        let urls = urls.ok_or_else(|| {
-            err_msg(
+        self.latest_release
+            .borrow()
+            .as_ref()
+            .map(|r| {
+                r.assets
+                    .iter()
+                    .filter(|asset| {
+                        asset.state == "uploaded"
+                            && (asset.browser_download_url.ends_with("alfredworkflow")
+                                || asset.browser_download_url.ends_with("alfred3workflow"))
+                    })
+                    .map(|asset| &asset.browser_download_url)
+                    .collect::<Vec<&String>>()
+            })
+            .ok_or_else(|| {
+                err_msg(
                 "no release item available, did you first get version by calling latest_version?",
             )
-        })?;
-
-        if urls.len() == 1 {
-            Ok(Url::parse(urls[0])?)
-        } else if urls.len() > 1 {
-            let url = urls.iter().find(|item| item.ends_with("alfred3workflow"));
-            let u = url.unwrap_or(&urls[0]);
-            Ok(Url::parse(u)?)
-        } else {
-            Err(err_msg("no usable download url"))
-        }
+            })
+            .and_then(|urls| match urls.len() {
+                0 => Err(err_msg("no usable download url")),
+                1 => Ok(Url::parse(urls[0])?),
+                _ => {
+                    let url = urls.iter().find(|item| item.ends_with("alfred3workflow"));
+                    let u = url.unwrap_or(&urls[0]);
+                    Ok(Url::parse(u)?)
+                }
+            })
     }
 
     fn latest_version(&self) -> Result<Version, Error> {

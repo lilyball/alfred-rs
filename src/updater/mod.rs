@@ -20,7 +20,7 @@
 //!
 //! The tag should follow all the [semantic versioning] rules.
 //! The only exception to those rules is that you can prepend your
-//! semver tag with ASCII letter `v`: `v0.3.1` or `0.3.1`
+//! semantic version tag with ASCII letter `v`: `v0.3.1` or `0.3.1`
 //!
 //! You can easily create `YourWorkflow.alfredworkflow` file by using the [export feature] of
 //! Alfred in its preferences window.
@@ -72,7 +72,7 @@
 //!
 //! // However in subsequent runs, when the checking interval period has elapsed
 //! // and there actually exists a new release, then `update_ready()` will return true.
-//! // In this case, one can download the lastest available release
+//! // In this case, one can download the latest available release
 //! // to the workflow's default cache folder.
 //! if updater.update_ready().unwrap() {
 //!     match updater.download_latest() {
@@ -120,7 +120,7 @@ use std::cell::Cell;
 use std::env as StdEnv;
 use std::fs::{create_dir_all, File};
 use std::io::{BufReader, BufWriter};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use time::Duration;
 
 mod releaser;
@@ -150,11 +150,10 @@ struct UpdaterState {
 }
 
 impl Updater<GithubReleaser> {
-    /// Create an `Updater` object that will talk to a `github` repository to download the latest releases.
+    /// Create an `Updater` object that will interface with a `github` repository.
     ///
-    /// The `repo_name` should be in `user_name/repository_name` form.
-    ///
-    /// See the [module level documentation](./index.html) for full example and description.
+    /// The `repo_name` should be in `user_name/repository_name` form. See the
+    /// [module level documentation](./index.html) for full example and description.
     ///
     /// ```rust
     /// # extern crate alfred;
@@ -170,9 +169,18 @@ impl Updater<GithubReleaser> {
     /// # fn main() {}
     /// ```
     ///
-    /// The `Updater` created using this method will look at the assets
-    /// available in each release point and download the first file whose name
-    /// ends in `alfred3workflow` or `alfredworkflow`.
+    /// This only creates an `Updater` without performing any network operations.
+    /// To check availability of a new release use [`update_ready()`] method.
+    ///
+    /// To download an available release use [`download_latest()`] method.
+    ///
+    /// # Errors
+    /// Error will happen during calling this method if:
+    /// - `Updater` state cannot be read/written during instantiation, or
+    /// - The workflow version cannot be parsed as semantic version compatible identifier.
+    ///
+    /// [`update_ready()`]: struct.Updater.html#method.update_ready
+    /// [`download_latest()`]: struct.Updater.html#method.download_latest
     pub fn gh<S>(repo_name: S) -> Result<Self, Error>
     where
         S: Into<String>,
@@ -187,7 +195,7 @@ impl<T> Updater<T>
 where
     T: Releaser,
 {
-    /// Create an `Updater` that will check & download the latest release from a remote server.
+    /// Create an `Updater` object that will interface with a remote repository for updating operations.
     ///
     /// How the `Updater` interacts with the remote server should be implemented using the [`Releaser`]
     /// trait.
@@ -196,6 +204,7 @@ where
     /// # extern crate alfred;
     /// # extern crate semver;
     /// # extern crate failure;
+    /// # extern crate url;
     /// use std::io;
     ///
     /// use semver::Version;
@@ -203,6 +212,7 @@ where
     /// use alfred::updater::Releaser;
     /// # use std::env;
     /// # use failure::Error;
+    /// # use url::Url;
     /// # fn main() {
     /// # env::set_var("alfred_workflow_uid", "abcdef");
     /// # env::set_var("alfred_workflow_data", env::temp_dir());
@@ -216,8 +226,8 @@ where
     ///     fn new<S: Into<String>>(project_id: S) -> Self {
     ///         RemoteCIReleaser {}
     ///     }
-    ///     fn downloadable_url(&self) -> Result<String, Error> {
-    ///         Ok("ci.remote.cc".to_string())
+    ///     fn downloadable_url(&self) -> Result<Url, Error> {
+    ///         Ok(Url::parse("https://ci.remote.cc")?)
     ///     }
     ///     fn latest_version(&self) -> Result<Version, Error> {
     ///         Ok(Version::from((1, 0, 12)))
@@ -229,10 +239,20 @@ where
     /// # }
     /// ```
     ///
-    /// # Panics
-    /// Method will panic if
+    /// Note that the method only creates an `Updater` without performing any network operations.
+    ///
+    /// To check availability of a new release use [`update_ready()`] method.
+    ///
+    /// To download an available release use [`download_latest()`] method.
+    ///
+    /// # Errors
+    /// Error will happen during calling this method if:
     /// - `Updater` state cannot be read/written during instantiation, or
-    /// - The workflow version cannot be parsed as semver compatible identifier.
+    /// - The workflow version cannot be parsed as semantic version compatible identifier.
+    ///
+    /// [`update_ready()`]: struct.Updater.html#method.update_ready
+    /// [`download_latest()`]: struct.Updater.html#method.download_latest
+    /// [`Releaser`]: trait.Releaser.html
     pub fn new<S>(repo_name: S) -> Result<Updater<T>, Error>
     where
         S: Into<String>,
@@ -276,10 +296,10 @@ where
     /// [Alfred's preferences window]: https://www.alfredapp.com/help/workflows/advanced/variables/
     ///
     /// # Panics
-    /// The method will panic if the passed value `version` cannot be parsed as a semver compatible string.
+    /// The method will panic if the passed value `version` cannot be parsed as a semantic version compatible string.
     pub fn set_version<S: AsRef<str>>(&mut self, version: S) {
-        self.state.current_version =
-            Version::parse(version.as_ref()).expect("version should follow semver rules.");
+        self.state.current_version = Version::parse(version.as_ref())
+            .expect("version should follow semantic version rules.");
         StdEnv::set_var("alfred_workflow_version", version.as_ref());
     }
 
@@ -302,21 +322,28 @@ where
     /// # }
     /// ```
     ///
-    /// # Panics
-    /// Method will panic if any file io error happens during saving the `Updater` data to disk.
+    /// # Errors
+    /// Error will happen during this method if any file io error happens while saving
+    /// the `Updater` data to disk.
     pub fn set_interval(&mut self, tick: i64) {
         self.set_update_interval(tick);
         self.save().expect("cannot save updater data to file.");
     }
 
-    /// Checks if a new update is availablle.
+    /// Checks if a new update is available.
     ///
-    /// This method will fetch the latest release information from repository and compare it to
-    /// the current release of the workflow. The repository should tag each release according to
-    /// semantic versioning for this to work.
+    /// This method will fetch the latest release information from repository (without a full download)
+    /// and compare it to the current release of the workflow. The repository should
+    /// tag each release according to semantic version scheme for this to work.
     ///
-    /// The workflow will store the timestamp for the very first call to this function as well as
-    /// all subsequent calls that take place after the set interval time has passed.
+    /// The method **will** make a network call to fetch metadata of releases *only if* UPDATE_INTERVAL
+    /// seconds has passed since the last network call, or in rare case of local cache file being corrupted.
+    ///
+    /// All calls, which happen before the UPDATE_INTERVAL seconds, will use a local cache
+    /// to report availability of a release.
+    ///
+    /// For `Updater`s talking to `github.com`, this method will only fetch a small metadata file to extract
+    /// the version info of the latest release.
     ///
     /// # Errors
     /// Checking for update can fail if network error, file error or Alfred environment variable
@@ -357,12 +384,18 @@ where
         // make a network call to see if a newer version is avail.
         // save the result of call to cache file.
         let ask_releaser_for_update = || -> Result<bool, Error> {
-            let v = self.releaser.latest_version()?;
-            let r = *self.current_version() < v;
-            write_last_check_status(if r { Some(v) } else { None })?;
-            self.set_last_check(Utc::now());
-            self.save()?;
-            Ok(r)
+            self.releaser
+                .latest_version()
+                .and_then(|v| Ok((*self.current_version() < v, v)))
+                .and_then(|(r, v)| {
+                    write_last_check_status(if r { Some(v) } else { None })?;
+                    Ok(r)
+                })
+                .and_then(|r| {
+                    self.set_last_check(Utc::now());
+                    self.save()?;
+                    Ok(r)
+                })
         };
 
         // if first time checking, just update the updater's timestamp, no network call
@@ -374,17 +407,15 @@ where
             // it's time to talk to remote server
             ask_releaser_for_update()
         } else {
-            // if can't read a cache (corrupted or missing which can happen
-            // if wf is cancelled while the network call or file operation was undergoing
+            // if we can't read the cache (corrupted or missing which can happen
+            // if wf is cancelled while the network call or file operation was undergoing)
             // we make another network call. Otherwise we use its content to report if an
             // update is ready or not until the next due check is upon us.
             match read_last_check_status() {
                 Err(_) => ask_releaser_for_update(),
                 Ok(last_check_status) => {
-                    if last_check_status.is_some()
-                        && last_check_status.as_ref().unwrap() > self.current_version()
-                    {
-                        Ok(true)
+                    if let Some(ref last_check_status) = last_check_status {
+                        Ok(self.current_version() < last_check_status)
                     } else {
                         Ok(false)
                     }
@@ -452,6 +483,14 @@ where
     /// ```bash
     /// open -b com.runningwithcrayons.Alfred-3 "$alfred_workflow_cache/latest_release_$alfred_workflow_uid.alfredworkflow"
     /// ```
+    ///
+    /// ## Note:
+    /// The method may take longer than other Alfred-based actions to complete. Workflow authors using this crate
+    /// should implement strategies to prevent unpleasant long blocks of user's typical work flow.
+    ///
+    /// One solution is to make upgrade & download steps of workflow launchable by separate keyboard shortcuts
+    /// or keyword within Alfred.
+    ///
     /// # Errors
     /// Downloading latest workflow can fail if network error, file error or Alfred environment variable
     /// errors happen, or if `Releaser` cannot produce a usable download url.
@@ -465,19 +504,19 @@ where
             .error_for_status()
             .map_err(|e| e.into())
             .and_then(|mut resp| {
-                env::workflow_cache()
+                env::workflow_cache() // Get workflow's dedicated cache folder
                     .ok_or_else(|| err_msg("missing env variable for cache dir"))
                     .and_then(|mut cache_dir| {
                         env::workflow_uid()
                             .ok_or_else(|| err_msg("missing env variable for uid"))
-                            .and_then(|ref uid| {
+                            .and_then(|ref uid| { // Build file name for the downloaded data
                                 cache_dir
                                     .push(["latest_release_", uid, ".alfredworkflow"].concat());
                                 Ok(cache_dir)
                             })
                     })
                     .and_then(|latest_release_downloaded_fn| {
-                        File::create(&latest_release_downloaded_fn)
+                        File::create(&latest_release_downloaded_fn) // Save downloaded data
                             .map_err(|e| e.into())
                             .and_then(|fp| {
                                 let mut buf_writer = BufWriter::with_capacity(0x10_0000, fp);
@@ -562,26 +601,20 @@ where
 
     fn build_data_fn() -> Result<PathBuf, Error> {
         let workflow_name = env::workflow_name()
-            .unwrap_or_else(|| "YouForgotToNameYourOwnWorkflow".to_string())
+            .unwrap_or_else(|| "YouForgotTo/フ:NameYourOwnWork}flowッ".to_string())
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
             .collect::<String>();
 
-        env::workflow_uid()
-            .ok_or_else(|| err_msg("missing env variable for uid"))
-            .and_then(|ref uid| {
-                let path = Path::new(
-                    [uid, "-", workflow_name.as_str(), "-updater"]
-                        .concat()
-                        .as_str(),
-                ).with_extension("json");
-                Ok(path)
-            })
-            .and_then(|data_fn| {
-                env::workflow_data()
-                    .ok_or_else(|| err_msg("missing env variable for data dir"))
-                    .and_then(|mut data_path| {
-                        data_path.push(data_fn);
+        env::workflow_data()
+            .ok_or_else(|| err_msg("missing env variable for data dir"))
+            .and_then(|mut data_path| {
+                env::workflow_uid()
+                    .ok_or_else(|| err_msg("missing env variable for uid"))
+                    .and_then(|ref uid| {
+                        let filename = [uid, "-", workflow_name.as_str(), "-updater.json"].concat();
+                        data_path.push(filename);
+
                         Ok(data_path)
                     })
             })
@@ -600,6 +633,16 @@ mod tests {
     use std::fs::remove_file;
     use tempfile::Builder;
     const VERSION_TEST: &str = "0.10.5";
+
+    #[test]
+    fn it_tests_settings_filename() {
+        setup_workflow_env_vars(true);
+        let updater_state_fn = Updater::<GithubReleaser>::build_data_fn().unwrap();
+        assert_eq!(
+            "workflow.B0AC54EC-601C-YouForgotTo___NameYourOwnWork_flow_-updater.json",
+            updater_state_fn.file_name().unwrap().to_str().unwrap()
+        );
+    }
 
     #[cfg(not(feature = "ci"))]
     #[test]
@@ -758,14 +801,17 @@ mod tests {
             StdEnv::set_var("alfred_workflow_data", v);
             StdEnv::set_var("alfred_workflow_cache", v);
             StdEnv::set_var("alfred_workflow_uid", "workflow.B0AC54EC-601C");
-            StdEnv::set_var("alfred_workflow_name", "YouForgotToNameYourOwnWorkflow");
+            StdEnv::set_var(
+                "alfred_workflow_name",
+                "YouForgotTo/フ:NameYourOwnWork}flowッ",
+            );
             StdEnv::set_var("alfred_workflow_bundleid", "MY_BUNDLE_ID");
             StdEnv::set_var("alfred_workflow_version", VERSION_TEST);
-            println!(
-                "\ndata: {:#?}\ncache: {:#?}",
-                env::workflow_data().unwrap(),
-                env::workflow_cache().unwrap()
-            );
+            // println!(
+            //     "\ndata: {:#?}\ncache: {:#?}",
+            //     env::workflow_data().unwrap(),
+            //     env::workflow_cache().unwrap()
+            // );
         }
         path
     }
