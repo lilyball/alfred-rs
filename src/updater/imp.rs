@@ -1,9 +1,9 @@
-#[allow(missing_docs)]
 use super::Error;
 use super::Releaser;
 use super::*;
 use Updater;
 
+#[doc(hidden)]
 impl<T> Updater<T>
 where
     T: Releaser,

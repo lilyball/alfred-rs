@@ -39,7 +39,7 @@ pub trait Releaser {
     fn latest_version(&self) -> Result<Version, Error>;
 }
 
-// Struct to handle checking and downloading release files from `github.com`
+/// Struct to handle checking and finding release files from `github.com`
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GithubReleaser {
     repo: String,
