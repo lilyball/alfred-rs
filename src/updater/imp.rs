@@ -3,12 +3,11 @@ use super::Releaser;
 use super::*;
 use Updater;
 
-#[doc(hidden)]
 impl<T> Updater<T>
 where
     T: Releaser,
 {
-    pub fn load_or_new(r: Box<T>) -> Result<Self, Error> {
+    pub(super) fn load_or_new(r: Box<T>) -> Result<Self, Error> {
         if let Ok(saved_state) = Self::load() {
             Ok(Updater {
                 state: saved_state,
@@ -28,23 +27,23 @@ where
         }
     }
 
-    pub fn current_version(&self) -> &Version {
+    pub(super) fn current_version(&self) -> &Version {
         &self.state.current_version
     }
 
-    pub fn last_check(&self) -> Option<DateTime<Utc>> {
+    pub(super) fn last_check(&self) -> Option<DateTime<Utc>> {
         self.state.last_check.get()
     }
 
-    pub fn set_last_check(&self, t: DateTime<Utc>) {
+    pub(super) fn set_last_check(&self, t: DateTime<Utc>) {
         self.state.last_check.set(Some(t));
     }
 
-    pub fn update_interval(&self) -> i64 {
+    pub(super) fn update_interval(&self) -> i64 {
         self.state.update_interval
     }
 
-    pub fn set_update_interval(&mut self, t: i64) {
+    pub(super) fn set_update_interval(&mut self, t: i64) {
         self.state.update_interval = t;
     }
 
@@ -61,7 +60,7 @@ where
         })
     }
 
-    pub fn save(&self) -> Result<(), Error> {
+    pub(super) fn save(&self) -> Result<(), Error> {
         Self::build_data_fn()
             .and_then(|data_file_path| {
                 create_dir_all(data_file_path.parent().unwrap())?;
@@ -75,7 +74,7 @@ where
             })
     }
 
-    pub fn build_data_fn() -> Result<PathBuf, Error> {
+    pub(super) fn build_data_fn() -> Result<PathBuf, Error> {
         let workflow_name = env::workflow_name()
             .unwrap_or_else(|| "YouForgotTo/フ:NameYourOwnWork}flowッ".to_string())
             .chars()
