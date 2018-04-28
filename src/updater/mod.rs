@@ -130,6 +130,8 @@ mod releaser;
 pub use self::releaser::GithubReleaser;
 pub use self::releaser::Releaser;
 
+// TODO: get the load_or_new patch from other branch
+
 /// Default update interval duration 24 hr
 const UPDATE_INTERVAL: i64 = 24 * 60 * 60;
 
