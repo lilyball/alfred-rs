@@ -36,6 +36,10 @@ additional terms or conditions.
 
 ## Version History
 
+#### 4.0.2
+
+* Update crate metadata.
+
 #### 4.0.1
 
 * Make `Builder.into_json` public.
