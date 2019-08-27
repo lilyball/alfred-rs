@@ -1,8 +1,8 @@
 [package]
 
 name = "alfred"
-version = "4.0.1" # remember to update html_root_url in lib.rs
-authors = ["Kevin Ballard <kevin@sb.org>"]
+version = "4.0.2" # remember to update html_root_url in lib.rs
+authors = ["Lily Ballard <lily@sb.org>"]
 description = """
 A library for writing Alfred workflows.
 
@@ -10,13 +10,13 @@ http://www.alfredapp.com
 """
 
 documentation = "https://docs.rs/alfred/"
-repository = "https://github.com/kballard/alfred-rs"
+repository = "https://github.com/lilyball/alfred-rs"
 
 readme = "README.md"
 license = "MIT/Apache-2.0"
 
 [badges]
-travis-ci = { repository = "kballard/alfred-rs" }
+travis-ci = { repository = "lilyball/alfred-rs" }
 
 [dependencies]
 

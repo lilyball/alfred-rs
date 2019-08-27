@@ -1,6 +1,6 @@
 # alfred-rs
 
-[![Build Status](https://travis-ci.org/kballard/alfred-rs.svg?branch=master)](https://travis-ci.org/kballard/alfred-rs)
+[![Build Status](https://travis-ci.org/lilyball/alfred-rs.svg?branch=master)](https://travis-ci.org/lilyball/alfred-rs)
 [![crates.io/crates/alfred](http://meritbadge.herokuapp.com/alfred)](https://crates.io/crates/alfred)
 
 Rust library to help with creating [Alfred][alfred] [Workflows][].

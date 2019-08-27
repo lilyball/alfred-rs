@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Kevin Ballard.
+// Copyright (c) 2015 Lily Ballard.
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
@@ -116,7 +116,7 @@
 
 #![warn(missing_docs)]
 
-#![doc(html_root_url = "https://docs.rs/alfred/4.0.1")]
+#![doc(html_root_url = "https://docs.rs/alfred/4.0.2")]
 
 #[macro_use]
 extern crate serde_json;
